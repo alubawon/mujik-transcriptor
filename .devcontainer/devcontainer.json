@@ -1,0 +1,35 @@
+{
+  "name": "mujik-transcriptor dev",
+  "image": "mujik-transcriptor:dev",
+  "build": {
+    "dockerfile": "../Dockerfile",
+    "context": "..",
+    "target": "dev"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.mypy-type-checker",
+        "charliermarsh.ruff",
+        "tamasfe.even-better-toml"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/app/.venv/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false
+      }
+    }
+  },
+  "mounts": [
+    "source=mujik-venvs,target=/app/.venv,type=volume",
+    "source=mujik-weights,target=/weights,type=volume"
+  ],
+  "containerUser": "mujik",
+  "remoteUser": "mujik",
+  "workspaceFolder": "/app",
+  "postCreateCommand": "python -m pytest tests/unit/ -q"
+}

@@ -1,5 +1,6 @@
-# mujik-transcriptor CPU 镜像（无 GPU 备选）
+# mujik-transcriptor CPU-only 镜像
 # 见 docs/design.md §7
+# 适用：CI、benchmark、无 GPU 机器
 
 ARG PYTHON_VERSION=3.11
 ARG UBUNTU_VERSION=22.04
@@ -16,27 +17,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python${PYTHON_VERSION} \
         python3-pip \
         python3-dev \
+        python3-venv \
         ffmpeg \
         libsndfile1 \
         git \
         curl \
         ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -m -u 1000 mujik
 
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 WORKDIR /app
-COPY pyproject.toml ./
-COPY src ./src
 
-RUN uv pip install --system --no-cache ".[core-io,loudnorm,midi,transcribe,render]"
+COPY --chown=mujik:mujik pyproject.toml ./
+COPY --chown=mujik:mujik src ./src
 
-COPY . /app
-
-RUN useradd -m -u 1000 mujik && chown -R mujik:mujik /app
 USER mujik
+RUN uv venv --python ${PYTHON_VERSION} .venv \
+    && . .venv/bin/activate \
+    && uv pip install --no-cache ".[core-io,render]"
 
-ENV PATH="/home/mujik/.local/bin:$PATH"
+ENV PATH="/home/mujik/.local/bin:/app/.venv/bin:${PATH}"
 
 ENTRYPOINT ["mujik"]
 CMD ["--help"]

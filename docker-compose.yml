@@ -1,66 +1,75 @@
 # mujik-transcriptor 完整编排
-# 主线（GPU）+ LilyPond 渲染（GPL）+ MuseScore 渲染（GPL）
+# 见 docs/design.md §7
+#
+# Profiles:
+#   dev:        CPU 容器 + 源码挂载，交互开发
+#   pipeline:   GPU 完整管线（生产/benchmark）
+#   lilypond:   单独跑 LilyPond 渲染服务（GPL 隔离）
+#   musescore:  单独跑 MuseScore 渲染服务（GPL 隔离）
+#   all:        跑全部
+#
+# 用法：
+#   docker compose --profile dev up pipeline-dev
+#   docker compose --profile pipeline up pipeline-gpu
+#   docker compose --profile lilypond up render-lilypond
+#   docker compose --profile all up
 
-version: "3.9"
+x-mujik-common: &mujik-common
+  environment: &mujik-env
+    MUJIK_LILYPOND_URL: ${MUJIK_LILYPOND_URL:-http://render-lilypond:5001}
+    MUJIK_MUSESCORE_URL: ${MUJIK_MUSESCORE_URL:-http://render-musescore:5002}
+    HF_HOME: /weights/huggingface
+    TRANSFORMERS_CACHE: /weights/huggingface
+  volumes:
+    - weights:/weights
 
 services:
-  pipeline:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: mujik-transcriptor:latest
-    container_name: mujik-pipeline
-    runtime: nvidia          # 需要 nvidia-container-toolkit
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - MUJIK_LILYPOND_URL=http://render-lilypond:5001
-      - MUJIK_MUSESCORE_URL=http://render-musescore:5002
-      - HF_HOME=/weights/huggingface
-      - TRANSFORMERS_CACHE=/weights/huggingface
-    volumes:
-      - ./data:/data                # 输入
-      - ./out:/out                  # 输出
-      - weights:/weights            # 模型权重
-    depends_on:
-      - render-lilypond
-      - render-musescore
-    networks:
-      - mujik-net
-    # 默认 v0.1 用 Verovio 在本地，外部服务按需启用
-    profiles: ["all", "pipeline"]
 
-  render-lilypond:
-    build: ./render-lilypond
-    image: mujik-render-lilypond:latest
-    container_name: mujik-render-lilypond
-    # GPL 隔离：自身为独立子项目
-    networks:
-      - mujik-net
-    profiles: ["all", "lilypond"]
-
-  render-musescore:
-    build: ./render-musescore
-    image: mujik-render-musescore:latest
-    container_name: mujik-render-musescore
-    # GPL 隔离：自身为独立子项目
-    networks:
-      - mujik-net
-    profiles: ["all", "musescore"]
-
-  # 开发模式：带源码挂载
+  # ============================================================
+  #  dev 模式：CPU 容器 + 源码挂载，交互开发用
+  # ============================================================
   pipeline-dev:
     build:
       context: .
       dockerfile: Dockerfile
+      target: dev
     image: mujik-transcriptor:dev
     container_name: mujik-pipeline-dev
+    profiles: ["dev"]
+    environment:
+      <<: *mujik-env
+    volumes:
+      - ./src:/app/src
+      - ./tests:/app/tests
+      - ./config:/app/config
+      - ./docs:/app/docs
+      - ./pyproject.toml:/app/pyproject.toml
+      - ./.venv-container:/app/.venv
+      - weights:/weights
+    working_dir: /app
+    stdin_open: true
+    tty: true
+    networks:
+      - mujik-net
+    # 默认 sleep infinity；可以 override 执行命令
+    command: ["sleep", "infinity"]
+
+  # ============================================================
+  #  GPU 模式：完整生产/benchmark 镜像
+  # ============================================================
+  pipeline-gpu:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: gpu
+    image: mujik-transcriptor:gpu
+    container_name: mujik-pipeline-gpu
+    profiles: ["pipeline", "all"]
     runtime: nvidia
     environment:
-      - NVIDIA_VISIBLE_DEVICES=all
-      - MUJIK_LILYPOND_URL=http://render-lilypond:5001
-      - MUJIK_MUSESCORE_URL=http://render-musescore:5002
+      NVIDIA_VISIBLE_DEVICES: all
+      <<: *mujik-env
     volumes:
-      - ./:/app               # 源码挂载
       - ./data:/data
       - ./out:/out
       - weights:/weights
@@ -69,12 +78,50 @@ services:
       - render-musescore
     networks:
       - mujik-net
-    profiles: ["dev"]
-    command: ["sleep", "infinity"]
+
+  # ============================================================
+  #  CPU 模式：单次跑（无 GPU 备选）
+  # ============================================================
+  pipeline-cpu:
+    build:
+      context: .
+      dockerfile: Dockerfile.cpu
+    image: mujik-transcriptor:cpu
+    container_name: mujik-pipeline-cpu
+    profiles: ["pipeline-cpu", "all"]
+    environment:
+      <<: *mujik-env
+    volumes:
+      - ./data:/data
+      - ./out:/out
+      - weights:/weights
+    networks:
+      - mujik-net
+
+  # ============================================================
+  #  GPL 隔离渲染服务
+  # ============================================================
+  render-lilypond:
+    build: ./render-lilypond
+    image: mujik-render-lilypond:latest
+    container_name: mujik-render-lilypond
+    profiles: ["lilypond", "all", "pipeline"]
+    networks:
+      - mujik-net
+
+  render-musescore:
+    build: ./render-musescore
+    image: mujik-render-musescore:latest
+    container_name: mujik-render-musescore
+    profiles: ["musescore", "all", "pipeline"]
+    networks:
+      - mujik-net
 
 volumes:
   weights:
     name: mujik-weights
+  .venv-container:
+    name: mujik-dev-venv
 
 networks:
   mujik-net:
