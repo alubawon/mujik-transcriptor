@@ -1,0 +1,40 @@
+# pre-commit 配置
+# 安装：uv pip install pre-commit && pre-commit install
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args: ["--fix", "--exit-non-zero-on-fix"]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        exclude: ^config/presets/.*\.yaml$  # extends: 字段在 presets 是允许的
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: detect-private-key
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.13.0
+    hooks:
+      - id: mypy
+        additional_dependencies: ["pydantic>=2.5"]
+        args: ["--config-file=pyproject.toml"]
+
+  # 许可证扫描：保证主项目依赖不引入 GPL/AGPL/CC-BY-NC
+  - repo: local
+    hooks:
+      - id: license-check
+        name: License check (no GPL/AGPL/CC-BY-NC in main deps)
+        entry: bash -c 'uvx liccheck --pyproject=pyproject.toml --no-deps || pip-licenses --format=markdown --fail-on="GPL;AGPL;CC-BY-NC"'
+        language: system
+        pass_filenames: false
+        types: [python]

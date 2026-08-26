@@ -1,0 +1,42 @@
+# mujik-transcriptor CPU 镜像（无 GPU 备选）
+# 见 docs/design.md §7
+
+ARG PYTHON_VERSION=3.11
+ARG UBUNTU_VERSION=22.04
+
+FROM ubuntu:${UBUNTU_VERSION} AS base
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PIP_NO_CACHE_DIR=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    LANG=C.UTF-8
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        python${PYTHON_VERSION} \
+        python3-pip \
+        python3-dev \
+        ffmpeg \
+        libsndfile1 \
+        git \
+        curl \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
+
+WORKDIR /app
+COPY pyproject.toml ./
+COPY src ./src
+
+RUN uv pip install --system --no-cache ".[core-io,loudnorm,midi,transcribe,render]"
+
+COPY . /app
+
+RUN useradd -m -u 1000 mujik && chown -R mujik:mujik /app
+USER mujik
+
+ENV PATH="/home/mujik/.local/bin:$PATH"
+
+ENTRYPOINT ["mujik"]
+CMD ["--help"]

@@ -1,0 +1,159 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mujik-transcriptor"
+version = "0.1.0"
+description = "End-to-end music audio to MIDI + PDF score pipeline"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11,<3.12"
+authors = [
+  { name = "mujik-transcriptor contributors" }
+]
+keywords = ["music", "midi", "transcription", "source-separation", "score"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3.11",
+  "Topic :: Multimedia :: Sound/Audio :: Analysis",
+]
+
+# v0.1 阶段：核心库只含 pydantic + pyyaml。
+# 音频 I/O、ML 栈、MIDI 工具全部在 optional extras。
+dependencies = [
+  "pydantic>=2.5,<3.0",
+  "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+core-io = [
+  "numpy>=1.26,<2.0",
+  "soundfile>=0.12",
+  "mido>=1.3",
+  "httpx>=0.25",
+  "tqdm>=4.66",
+  "loguru>=0.7",
+]
+loudnorm = [
+  "pyloudnorm>=0.2.0",
+]
+midi = [
+  "pretty-midi>=0.2.10",
+  "music21>=10.0",
+]
+separate = [
+  "torch>=2.1,<2.4",
+  "torchaudio>=2.1,<2.4",
+  "demucs>=4.0",
+]
+transcribe = [
+  "onnxruntime>=1.16",
+  "librosa>=0.10",
+]
+transcribe-tf = [
+  "basic-pitch>=0.4",
+]
+render = [
+  "verovio>=6.0",
+]
+all = [
+  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,render]",
+]
+dev = [
+  "pytest>=7.4",
+  "pytest-cov>=4.1",
+  "pytest-asyncio>=0.21",
+  "ruff>=0.1",
+  "mypy>=1.7",
+  "pre-commit>=3.5",
+  "liccheck>=0.9",
+  "types-PyYAML",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/your-org/mujik-transcriptor"
+"Documentation" = "https://github.com/your-org/mujik-transcriptor/tree/main/docs"
+"Bug Tracker" = "https://github.com/your-org/mujik-transcriptor/issues"
+
+[project.scripts]
+mujik = "mujik.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/mujik"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".venv", "build", "dist"]
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "B", "UP", "N", "SIM", "PT"]
+ignore = ["E501", "B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["N802", "N803"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+exclude = ["build/", "dist/"]
+
+[[tool.mypy.overrides]]
+module = "demucs.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "music21.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "verovio.*"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = [
+  "-ra",
+  "--strict-markers",
+  "--strict-config",
+  "--tb=short",
+]
+markers = [
+  "slow: marks tests as slow",
+  "integration: integration tests requiring external services",
+  "gpu: tests requiring GPU",
+  "downloads: tests that download model weights",
+]
+
+[tool.liccheck]
+authorized_licenses = [
+  "MIT",
+  "Apache-2.0",
+  "Apache Software License",
+  "BSD",
+  "BSD-3-Clause",
+  "BSD-2-Clause",
+  "ISC",
+  "MPL-2.0",
+  "Python Software Foundation License",
+  "Zlib",
+  "HPND",
+  "Unlicense",
+  "CC0-1.0",
+  "CC-BY-4.0",
+  "CC-BY-3.0",
+]
+unauthorized_licenses = [
+  "GPL",
+  "GPL-2.0",
+  "GPL-3.0",
+  "AGPL",
+  "AGPL-3.0",
+  "LGPL",
+  "CC-BY-NC",
+]

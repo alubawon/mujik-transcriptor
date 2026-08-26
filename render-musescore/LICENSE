@@ -1,0 +1,6 @@
+render-musescore is licensed under GPL-2.0+ because it links to MuseScore (GPL-2.0+).
+
+See the main project's LICENSE at the repository root for the main project (MIT) license.
+This subproject is intentionally isolated from the main codebase via HTTP API to avoid GPL contamination of the MIT-licensed mujik-transcriptor core.
+
+For full GPL-2.0+ text, see https://www.gnu.org/licenses/old-licenses/gpl-2.0.html

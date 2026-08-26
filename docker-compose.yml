@@ -1,0 +1,82 @@
+# mujik-transcriptor 完整编排
+# 主线（GPU）+ LilyPond 渲染（GPL）+ MuseScore 渲染（GPL）
+
+version: "3.9"
+
+services:
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mujik-transcriptor:latest
+    container_name: mujik-pipeline
+    runtime: nvidia          # 需要 nvidia-container-toolkit
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - MUJIK_LILYPOND_URL=http://render-lilypond:5001
+      - MUJIK_MUSESCORE_URL=http://render-musescore:5002
+      - HF_HOME=/weights/huggingface
+      - TRANSFORMERS_CACHE=/weights/huggingface
+    volumes:
+      - ./data:/data                # 输入
+      - ./out:/out                  # 输出
+      - weights:/weights            # 模型权重
+    depends_on:
+      - render-lilypond
+      - render-musescore
+    networks:
+      - mujik-net
+    # 默认 v0.1 用 Verovio 在本地，外部服务按需启用
+    profiles: ["all", "pipeline"]
+
+  render-lilypond:
+    build: ./render-lilypond
+    image: mujik-render-lilypond:latest
+    container_name: mujik-render-lilypond
+    # GPL 隔离：自身为独立子项目
+    networks:
+      - mujik-net
+    profiles: ["all", "lilypond"]
+
+  render-musescore:
+    build: ./render-musescore
+    image: mujik-render-musescore:latest
+    container_name: mujik-render-musescore
+    # GPL 隔离：自身为独立子项目
+    networks:
+      - mujik-net
+    profiles: ["all", "musescore"]
+
+  # 开发模式：带源码挂载
+  pipeline-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: mujik-transcriptor:dev
+    container_name: mujik-pipeline-dev
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - MUJIK_LILYPOND_URL=http://render-lilypond:5001
+      - MUJIK_MUSESCORE_URL=http://render-musescore:5002
+    volumes:
+      - ./:/app               # 源码挂载
+      - ./data:/data
+      - ./out:/out
+      - weights:/weights
+    depends_on:
+      - render-lilypond
+      - render-musescore
+    networks:
+      - mujik-net
+    profiles: ["dev"]
+    command: ["sleep", "infinity"]
+
+volumes:
+  weights:
+    name: mujik-weights
+
+networks:
+  mujik-net:
+    name: mujik-net
+    driver: bridge

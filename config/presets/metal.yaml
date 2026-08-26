@@ -1,0 +1,17 @@
+# metal preset — 4-stem + 32 分细网格 + 直拍
+extends: "../default.yaml"
+
+preset: "metal"
+
+source_separation:
+  stem_count: 4
+  model: "demucs"
+
+quantize:
+  groove_template: "straight"
+  grid_resolution: 32  # 更细以容纳 blast beat
+  strength: 0.6         # 弱化以保留节奏型
+
+transcribe:
+  drums: "adtof"
+  # 后续可换 DrumTransformer 微调

@@ -1,0 +1,12 @@
+# pop preset — 4-stem 直拍 groove
+extends: "../default.yaml"
+
+preset: "pop"
+
+source_separation:
+  stem_count: 4
+  model: "demucs"
+
+quantize:
+  groove_template: "straight"
+  grid_resolution: 16

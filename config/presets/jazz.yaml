@@ -1,0 +1,16 @@
+# jazz preset — 5-stem (含 piano) + swing16 + 和弦识别
+extends: "../default.yaml"
+
+preset: "jazz"
+
+source_separation:
+  stem_count: 5
+  model: "mdx23c"
+
+chord:
+  enabled: true
+  vocab: "extended"
+
+quantize:
+  groove_template: "swing16"
+  grid_resolution: 12  # triplet 8ths

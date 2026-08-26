@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+.tox/
+.nox/
+
+# Virtual env
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project specific
+data/
+out/
+weights/
+!weights/.gitkeep
+*.mid
+*.midi
+!tests/fixtures/*.mid
+*.wav
+!tests/fixtures/*.wav
+*.mp3
+*.flac
+*.pdf
+!docs/*.pdf
+*.musicxml
+*.xml
+!docs/*.xml
+
+# Logs
+*.log
+
+# Model weights
+*.pt
+*.onnx
+*.ckpt
+*.h5
+huggingface/
+
+# Local config overrides
+config/local.yaml
+config/*.local.yaml
+
+# Docker
+docker-compose.override.yml

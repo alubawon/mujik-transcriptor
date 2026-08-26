@@ -1,0 +1,67 @@
+# mujik-transcriptor default config
+# 见 docs/design.md §5
+
+input_path: ""           # CLI 注入
+output_dir: "./out"
+preset: "custom"
+
+source_separation:
+  stem_count: 4
+  model: "demucs"
+  variant: "htdemucs_ft"
+  device: "cuda"
+  precision: "fp16"
+  segment_length: 7.5
+  overlap: 0.25
+  jobs: 1
+  out_bitrate: 256
+  out_format: "wav"
+
+transcribe:
+  vocals: "basic-pitch"
+  bass: "basic-pitch"
+  drums: "adtof"
+  piano: "bytedance-piano"
+  guitar: "apollo"
+  other: "basic-pitch"
+  polyphonic_threshold: 0.5
+  onset_interval_min_ms: 50.0
+  velocity_threshold: 30
+  min_note_length_ms: 50.0
+  max_polyphony: 6
+
+rhythm:
+  beat_tracker: "beat-transformer"
+  time_signature_model: "resnet18-meter2800"
+  time_signature_fallback: [4, 4]
+  allow_user_override: true
+  confidence_threshold: 0.6
+
+chord:
+  enabled: false
+  models: ["btc-hcqt", "chord-cnn-lstm"]
+  vocab: "extended"
+
+quantize:
+  enabled: true
+  grid_resolution: 16
+  strength: 0.8
+  groove_template: "straight"
+  custom_groove_path: null
+
+merge:
+  mode: "piano_reduction"
+  density_filter: true
+  max_simultaneous_notes: 12
+  preserve_drums: true
+  preserve_voice_separate: true
+
+render:
+  pdf_backend: "verovio"
+  lilypond_url: "http://localhost:5001"
+  musescore_url: "http://localhost:5002"
+  include_chord_symbols: true
+  include_lyrics: false
+  page_size: "A4"
+  staff_count: 2
+  timeout_sec: 60
