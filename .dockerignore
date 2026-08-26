@@ -1,0 +1,50 @@
+# 与 .gitignore 类似，但 .dockerignore 防止宿主机目录被 COPY 进镜像
+# 必须排除宿主机 .venv（否则 uv venv 创建的 venv 会带宿主 Python 路径烧进镜像）
+
+# Git
+.git/
+.gitignore
+
+# Python venvs（关键！）
+.venv/
+venv/
+env/
+.python-version
+
+# 测试与构建产物
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+build/
+dist/
+*.egg-info/
+
+# IDE
+.vscode/
+.idea/
+
+# 项目数据
+data/
+out/
+weights/
+!weights/README.md
+
+# 文档生成产物
+*.log
+
+# 模型权重
+*.pt
+*.onnx
+*.ckpt
+*.h5
+huggingface/
+
+# Docker
+docker-compose.override.yml
+Dockerfile
+Dockerfile.cpu
+docker-compose.yml
+.dockerignore
+.devcontainer/

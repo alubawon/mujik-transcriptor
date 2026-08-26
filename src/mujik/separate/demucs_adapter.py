@@ -133,8 +133,9 @@ def separate_with_demucs(
                 sample_rate = info.samplerate
                 duration = info.duration
                 break
-    except ImportError:
-        logger.debug("soundfile not installed; cannot probe sample rate/duration from stems")
+    except (ImportError, Exception) as e:  # noqa: BLE001
+        # 包含 LibsndfileError（声文件无法读取）等所有异常
+        logger.debug("could not probe sample rate/duration from stems: {}", e)
 
     stems = Stems(
         separation_model=f"demucs/{cfg.variant}",
