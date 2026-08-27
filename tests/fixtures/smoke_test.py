@@ -93,6 +93,7 @@ def main() -> int:
             LoudnormConfig, PipelineConfig, TranscribeConfig,
         )
         from mujik.pipeline import Pipeline
+        from mujik.rhythm.model import BeatTrack
 
         cfg = PipelineConfig(
             input_path=str(fixture_path),
@@ -100,8 +101,18 @@ def main() -> int:
             loudnorm=LoudnormConfig(enabled=False),  # 跳过 pyloudnorm
             transcribe=TranscribeConfig(),
         )
+
+        def fake_madmom(audio_path, config=None, out_dir=None):
+            return BeatTrack(
+                beats=[0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5],
+                downbeats=[0.0, 2.0, 4.0],
+                bpm=120.0,
+                tempo_confidence=0.9,
+            )
+
         with patch("mujik.pipeline.separate_with_demucs", side_effect=fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=fake_transcribe), \
+             patch("mujik.pipeline.track_beats_with_madmom", side_effect=fake_madmom), \
              patch("soundfile.info") as mock_info:
             mock_info.return_value = MagicMock(duration=duration, samplerate=sample_rate)
             project = Pipeline(cfg).run()
@@ -112,6 +123,10 @@ def main() -> int:
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
         assert meta_path.exists(), f"missing {meta_path}"
+        beats_path = out_dir / "beats.json"
+        assert beats_path.exists(), f"missing {beats_path} (v0.2.2)"
+        ts_path = out_dir / "time_signatures.json"
+        assert ts_path.exists(), f"missing {ts_path} (v0.2.2)"
 
         import pretty_midi
         pm = pretty_midi.PrettyMIDI(str(midi_path))
@@ -122,10 +137,21 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] == "0.2.1"
+        assert meta["mujik_version"] == "0.2.2"
+        assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
-        print("\n✅ E2E smoke test PASSED")
+        beats = json.loads(beats_path.read_text())
+        assert beats["bpm"] == 120.0
+        assert len(beats["beats"]) == 10
+        print(f"      beats.json: bpm={beats['bpm']}, {len(beats['beats'])} beats")
+
+        time_sigs = json.loads(ts_path.read_text())
+        assert len(time_sigs) >= 1
+        assert time_sigs[0]["sig"] == [4, 4]
+        print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
+
+        print("\n✅ E2E smoke test PASSED (v0.2.2)")
     return 0
 
 

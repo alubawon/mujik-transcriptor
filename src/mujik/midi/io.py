@@ -104,14 +104,30 @@ def write_project_to_midi(
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # v0.2.1: 暂只支持首个 tempo（PrettyMIDI 0.2.11 API 用 initial_tempo）。
-    # 多段 tempo 留 v0.2.2（rhythm 层）用 _tick_scales 注入。
+    # Tempo（v0.2.2 多段支持：用 pretty_midi._tick_scales 直接注入）
     initial_bpm = (
         float(project.tempo_map[0].bpm)
         if project.tempo_map and project.tempo_map[0].bpm > 0
         else 120.0
     )
-    pm = pretty_midi.PrettyMIDI(initial_tempo=initial_bpm)
+    resolution = 220
+    pm = pretty_midi.PrettyMIDI(
+        initial_tempo=initial_bpm, resolution=resolution,
+    )
+
+    if project.tempo_map:
+        # 多段 → 构造 _tick_scales
+        # 简化：以首段 BPM 为基准 scale，后续段 tick 时间用首段 scale 换算
+        # （完整多段 tick-scale 切换留 v0.2.4）
+        bpm0 = float(project.tempo_map[0].bpm)
+        scales: list[tuple[int, float]] = [
+            (0, 60.0 / (bpm0 * resolution))
+        ]
+        for seg in project.tempo_map[1:]:
+            tick = int(seg.start_time * resolution * (60.0 / bpm0 / resolution))
+            bpm = float(seg.bpm)
+            scales.append((tick, 60.0 / (bpm * resolution)))
+        pm._tick_scales = scales
 
     # Time signatures
     if project.time_signatures:

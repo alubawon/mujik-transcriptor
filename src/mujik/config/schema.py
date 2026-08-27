@@ -76,11 +76,13 @@ class AdtofConfig(BaseModel):
 class RhythmConfig(BaseModel):
     """节拍/下拍/时间签名配置。"""
 
-    beat_tracker: Literal["beat-transformer", "beatnet"] = "beat-transformer"
+    enabled: bool = True
+    beat_tracker: Literal["madmom", "beat-transformer", "beatnet"] = "madmom"
     time_signature_model: str = "resnet18-meter2800"
     time_signature_fallback: tuple[int, int] = (4, 4)
     allow_user_override: bool = True
-    confidence_threshold: float = Field(default=0.6, ge=0.0, le=1.0)
+    confidence_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    madmom_timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
 
 class ChordConfig(BaseModel):
