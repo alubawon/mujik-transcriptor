@@ -52,6 +52,27 @@ class TranscribeConfig(BaseModel):
     max_polyphony: int = Field(default=6, ge=1, le=32)
 
 
+class BasicPitchConfig(BaseModel):
+    """Spotify basic-pitch 配置（subprocess 调用）。"""
+
+    onset_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    frame_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
+    min_note_length_ms: float = Field(default=50.0, ge=0.0, le=1000.0)
+    min_frequency: float | None = Field(default=None, ge=20.0, le=2000.0)
+    max_frequency: float | None = Field(default=None, ge=2000.0, le=8000.0)
+    timeout_sec: int = Field(default=1800, ge=60, le=7200)
+
+
+class AdtofConfig(BaseModel):
+    """adtof 配置（subprocess 调用）。"""
+
+    model: Literal["adtof-5class", "adtof-9class"] = "adtof-5class"
+    onset_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    min_note_length_ms: float = Field(default=50.0, ge=10.0, le=1000.0)
+    device: Literal["cpu", "cuda"] = "cpu"
+    timeout_sec: int = Field(default=1800, ge=60, le=7200)
+
+
 class RhythmConfig(BaseModel):
     """节拍/下拍/时间签名配置。"""
 
@@ -170,6 +191,8 @@ __all__ = [
     "SourceSeparationConfig",
     "LoudnormConfig",
     "TranscribeConfig",
+    "BasicPitchConfig",
+    "AdtofConfig",
     "RhythmConfig",
     "ChordConfig",
     "QuantizeConfig",
