@@ -61,7 +61,10 @@ RUN UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
     /usr/local/bin/python${PYTHON_VERSION} -m venv .venv \
     && . .venv/bin/activate \
     && UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
-       uv pip install --no-cache ".[dev,all]"
+       uv pip install --no-cache ".[dev,core-io,render,midi,loudnorm,transcribe]"
+
+# 注：v0.2.1 重型依赖（basic-pitch TF 链、adtof PyTorch、demucs 模型权重）不烧进镜像；
+# 跑测试/E2E 时按需 `uv pip install` 增量装，与 v0.1 增量装包策略一致。
 
 # ============================================================
 # Stage 3: gpu —— 加 CUDA runtime（生产用）

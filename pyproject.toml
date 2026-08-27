@@ -53,8 +53,13 @@ separate = [
 transcribe = [
   "onnxruntime>=1.16",
   "librosa>=0.10",
-  "adtof>=0.5",
   "numpy>=1.26,<2.0",
+]
+# adtof 需手动从 GitHub 装（仅 GitHub 可用；国内可能联不通 GitHub）：
+#   uv pip install "adtof @ git+https://github.com/Music-and-Culture-Technology-Lab/Adtof.git"
+# 测试用 mock 替代；实际 E2E 跑前再装。
+transcribe-adtof = [
+  "adtof @ git+https://github.com/Music-and-Culture-Technology-Lab/Adtof.git",
 ]
 transcribe-tf = [
   "basic-pitch>=0.4",
@@ -87,6 +92,10 @@ mujik = "mujik.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mujik"]
+
+[tool.hatch.metadata]
+# 允许 optional-dependencies 里写 git+https://... 直引
+allow-direct-references = true
 
 [tool.ruff]
 line-length = 100
