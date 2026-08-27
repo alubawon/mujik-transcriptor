@@ -1,10 +1,11 @@
 """mujik-transcriptor CLI 入口。
 
-v0.1 阶段仅做骨架：subcommand 框架 + run 最小路径占位。
+v0.2.3 子命令：run / render / separate / quantize / time-signature change
 """
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 from pathlib import Path
 
@@ -67,6 +68,160 @@ def cmd_separate(args: argparse.Namespace) -> int:
     return 0
 
 
+def _parse_time_arg(s: str) -> float:
+    """解析时间参数：支持浮点秒或 mm:ss.SSS 格式。"""
+    s = s.strip()
+    if ":" in s:
+        parts = s.split(":")
+        if len(parts) != 2:
+            raise ValueError(f"time arg must be float or mm:ss.SSS, got {s!r}")
+        minutes = int(parts[0])
+        seconds = float(parts[1])
+        return float(minutes) * 60.0 + seconds
+    return float(s)
+
+
+def _parse_sig_arg(s: str) -> tuple[int, int]:
+    """解析拍号字符串 '4/4' → (4, 4)。"""
+    s = s.strip()
+    if "/" not in s:
+        raise ValueError(f"signature must be like '4/4', got {s!r}")
+    num_s, den_s = s.split("/", 1)
+    num = int(num_s)
+    den = int(den_s)
+    if den not in (1, 2, 4, 8, 16, 32):
+        raise ValueError(f"denominator must be power of 2 up to 32, got {den}")
+    if num < 1 or num > 32:
+        raise ValueError(f"numerator out of range: {num}")
+    return (num, den)
+
+
+def _argparse_sig(s: str) -> tuple[int, int]:
+    """argparse type= 包装：失败抛 ArgumentTypeError 让 argparse 友好报错。"""
+    try:
+        return _parse_sig_arg(s)
+    except ValueError as e:
+        import argparse as _ap
+        raise _ap.ArgumentTypeError(str(e))
+
+
+def cmd_quantize(args: argparse.Namespace) -> int:
+    """CLI: mujik quantize --project-dir DIR [--config-yaml CFG] [--out-dir DIR]"""
+    from mujik.config.schema import QuantizeConfig
+    from mujik.quantize.core import (
+        load_beat_track_from_json,
+        quantize_project,
+        write_quantize_report,
+    )
+    from mujik.time_signature.io import read_time_signatures_json
+
+    project_dir = Path(args.project_dir)
+    midi_in = project_dir / "project.mid"
+    beats_json = project_dir / "beats.json"
+    ts_json = project_dir / "time_signatures.json"
+
+    if not midi_in.exists():
+        logger.error("missing {}", midi_in)
+        return 1
+    if not beats_json.exists():
+        logger.error("missing {} (required for BPM)", beats_json)
+        return 2
+    if not ts_json.exists():
+        logger.warning("missing {} → use default 4/4", ts_json)
+        time_signatures: list = []
+    else:
+        time_signatures = read_time_signatures_json(ts_json)
+
+    beat_track = load_beat_track_from_json(beats_json)
+
+    # 加载配置
+    if args.config_yaml:
+        cfg_path = Path(args.config_yaml)
+        cfg_data = json.loads(cfg_path.read_text(encoding="utf-8"))
+        cfg = QuantizeConfig(**cfg_data)
+    else:
+        cfg = QuantizeConfig()
+
+    # 写盘路径
+    out_dir = Path(args.out_dir) if args.out_dir else project_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    midi_out = out_dir / "project.mid"
+
+    logger.info(
+        "mujik quantize: dir={}, grid={}, strength={}, groove={}",
+        project_dir, cfg.grid_resolution, cfg.strength, cfg.groove_template,
+    )
+
+    _, report = quantize_project(
+        midi_in, beat_track, time_signatures, cfg, output_midi_path=midi_out,
+    )
+
+    if not args.no_write_report:
+        report_path = out_dir / "quantize_report.json"
+        write_quantize_report(report, report_path)
+        logger.info("wrote {}", report_path)
+
+    logger.info(
+        "quantize done: tracks={n} notes_before={b} notes_after={a}",
+        n=len(report.per_track),
+        b=report.total_notes_before,
+        a=report.total_notes_after,
+    )
+    return 0
+
+
+def cmd_time_signature_change(args: argparse.Namespace) -> int:
+    """CLI: mujik time-signature change --project-dir DIR --at T --new SIG --mode {A,B}"""
+    from mujik.time_signature.io import (
+        read_time_signatures_json,
+        write_time_signatures_json,
+    )
+    from mujik.time_signature.operations import (
+        change_time_signature_at_boundary,
+        redraw_bars_under_new_time_signature,
+    )
+
+    project_dir = Path(args.project_dir)
+    ts_json = project_dir / "time_signatures.json"
+    if not ts_json.exists():
+        logger.error("missing {}", ts_json)
+        return 1
+
+    segments = read_time_signatures_json(ts_json)
+    if not segments:
+        logger.error("empty time_signatures.json")
+        return 2
+
+    at = _parse_time_arg(args.at)
+    # args.new 已被 argparse type= 转换为 tuple[int, int]
+    new_sig = tuple(args.new)
+    mode = args.mode.upper()
+
+    if mode == "A":
+        new_segments = redraw_bars_under_new_time_signature(
+            segments, (at, segments[-1].end_time), new_sig,
+        )
+    elif mode == "B":
+        change_mode = "regrid" if args.regrid else "preserve_time"
+        new_segments = change_time_signature_at_boundary(
+            segments, at, new_sig, mode=change_mode,
+        )
+    else:
+        logger.error("--mode must be A or B, got {}", args.mode)
+        return 3
+
+    out_dir = Path(args.out_dir) if args.out_dir else project_dir
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "time_signatures.json"
+    write_time_signatures_json(new_segments, out_path)
+
+    logger.info(
+        "time-signature change done: mode={} at={} new={} segments_before={} segments_after={}",
+        mode, at, new_sig, len(segments), len(new_segments),
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """构建 CLI 解析器。"""
     parser = argparse.ArgumentParser(
@@ -95,6 +250,60 @@ def build_parser() -> argparse.ArgumentParser:
     p_sep.add_argument("--output", "-o", required=True)
     p_sep.set_defaults(func=cmd_separate)
 
+    # quantize (v0.2.3)
+    p_q = sub.add_parser("quantize", help="quantize MIDI notes to a grid (v0.2.3)")
+    p_q.add_argument(
+        "--project-dir", required=True,
+        help="directory containing project.mid + beats.json + time_signatures.json",
+    )
+    p_q.add_argument(
+        "--config-yaml", default=None,
+        help="optional JSON file with QuantizeConfig overrides (default: QuantizeConfig())",
+    )
+    p_q.add_argument(
+        "--out-dir", default=None,
+        help="output directory (default: in-place overwrite of project-dir)",
+    )
+    p_q.add_argument(
+        "--no-write-report", action="store_true",
+        help="skip writing quantize_report.json",
+    )
+    p_q.set_defaults(func=cmd_quantize)
+
+    # time-signature (v0.2.3)
+    p_ts = sub.add_parser(
+        "time-signature",
+        help="time-signature operations (v0.2.3)",
+    )
+    ts_sub = p_ts.add_subparsers(dest="ts_command", required=False)
+
+    p_tsc = ts_sub.add_parser(
+        "change",
+        help="change time signature at a given time (mode A or B)",
+    )
+    p_tsc.add_argument("--project-dir", required=True, help="dir containing time_signatures.json")
+    p_tsc.add_argument(
+        "--at", required=True,
+        help="time of change: float seconds or mm:ss.SSS",
+    )
+    p_tsc.add_argument(
+        "--new", required=True, type=_argparse_sig,
+        help="new time signature, e.g. '4/4' '3/4' '6/8' '7/8'",
+    )
+    p_tsc.add_argument(
+        "--mode", required=True, choices=["A", "B"],
+        help="A=redraw bars in range, B=split at boundary",
+    )
+    p_tsc.add_argument(
+        "--regrid", action="store_true",
+        help="(only with --mode B) regrid notes to new time signature grid",
+    )
+    p_tsc.add_argument(
+        "--out-dir", default=None,
+        help="output directory (default: in-place overwrite)",
+    )
+    p_tsc.set_defaults(func=cmd_time_signature_change)
+
     return parser
 
 
@@ -104,6 +313,16 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if not getattr(args, "command", None):
         parser.print_help()
+        return 1
+    # time-signature 必须有子命令
+    if args.command == "time-signature" and not getattr(args, "ts_command", None):
+        # 打印 time-signature 子命令的 help
+        for action in parser._actions:
+            if isinstance(action, argparse._SubParsersAction):
+                for choice, subparser in action.choices.items():
+                    if choice == "time-signature":
+                        subparser.print_help()
+                        return 1
         return 1
     return args.func(args)
 

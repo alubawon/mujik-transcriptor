@@ -4,8 +4,9 @@
 1. 生成合成测试 wav
 2. 跑 Pipeline.run() 但 mock 掉 demucs/basic-pitch/adtof
 3. 验证 out/project.mid 存在 + pretty-midi 可解析
+4. 跑 mujik quantize 验证 out/quantize_report.json
 
-用法（在 dev-v0.2.1 容器内）：
+用法（在 dev-v0.2.3 容器内）：
     python tests/fixtures/smoke_test.py
 """
 from __future__ import annotations
@@ -25,7 +26,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/5] generate synthetic wav → {fixture_path}")
+    print(f"[1/6] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -41,10 +42,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/5] output dir: {out_dir}")
+        print(f"[2/6] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/5] mock heavy adapters...")
+        print("[3/6] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -86,7 +87,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/5] run pipeline (mocked)...")
+        print("[4/6] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -118,7 +119,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/5] verify outputs...")
+        print("[5/6] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -151,7 +152,28 @@ def main() -> int:
         assert time_sigs[0]["sig"] == [4, 4]
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
-        print("\n✅ E2E smoke test PASSED (v0.2.2)")
+        # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
+        print("[6/6] run mujik quantize (v0.2.3)...")
+        from mujik.cli import main as cli_main
+        rc = cli_main([
+            "quantize",
+            "--project-dir", str(out_dir),
+        ])
+        assert rc == 0, f"mujik quantize failed: rc={rc}"
+
+        report_path = out_dir / "quantize_report.json"
+        assert report_path.exists(), f"missing {report_path}"
+        report = json.loads(report_path.read_text())
+        assert report["total_notes_before"] >= 4
+        assert report["total_notes_after"] >= 4
+        assert report["grid_resolution"] == 16
+        assert report["groove_template"] == "straight"
+        print(
+            f"      quantize_report.json: {report['total_notes_before']} -> {report['total_notes_after']} notes, "
+            f"grid={report['grid_resolution']}, groove={report['groove_template']}"
+        )
+
+        print("\n✅ E2E smoke test PASSED (v0.2.3)")
     return 0
 
 
