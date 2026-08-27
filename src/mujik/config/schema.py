@@ -132,6 +132,7 @@ class PipelineConfig(BaseModel):
     preset: Literal["pop", "jazz", "metal", "custom"] = "custom"
 
     source_separation: SourceSeparationConfig = Field(default_factory=SourceSeparationConfig)
+    loudnorm: LoudnormConfig = Field(default_factory=LoudnormConfig)
     transcribe: TranscribeConfig = Field(default_factory=TranscribeConfig)
     rhythm: RhythmConfig = Field(default_factory=RhythmConfig)
     chord: ChordConfig = Field(default_factory=ChordConfig)
