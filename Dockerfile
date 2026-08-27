@@ -61,7 +61,7 @@ RUN UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
     /usr/local/bin/python${PYTHON_VERSION} -m venv .venv \
     && . .venv/bin/activate \
     && UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
-       uv pip install --no-cache ".[dev,core-io,render]"
+       uv pip install --no-cache ".[dev,all]"
 
 # ============================================================
 # Stage 3: gpu —— 加 CUDA runtime（生产用）

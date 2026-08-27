@@ -21,7 +21,7 @@ classifiers = [
   "Topic :: Multimedia :: Sound/Audio :: Analysis",
 ]
 
-# v0.1 阶段：核心库只含 pydantic + pyyaml。
+# v0.2.1 阶段：核心库只含 pydantic + pyyaml。
 # 音频 I/O、ML 栈、MIDI 工具全部在 optional extras。
 dependencies = [
   "pydantic>=2.5,<3.0",
@@ -39,6 +39,7 @@ core-io = [
 ]
 loudnorm = [
   "pyloudnorm>=0.2.0",
+  "numpy>=1.26,<2.0",  # pyloudnorm 显式依赖
 ]
 midi = [
   "pretty-midi>=0.2.10",
@@ -52,15 +53,18 @@ separate = [
 transcribe = [
   "onnxruntime>=1.16",
   "librosa>=0.10",
+  "adtof>=0.5",
+  "numpy>=1.26,<2.0",
 ]
 transcribe-tf = [
   "basic-pitch>=0.4",
+  "numpy>=1.26,<2.0",
 ]
 render = [
   "verovio>=6.0",
 ]
 all = [
-  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,render]",
+  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,render]",
 ]
 dev = [
   "pytest>=7.4",
