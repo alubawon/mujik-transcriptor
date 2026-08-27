@@ -27,6 +27,14 @@ class SourceSeparationConfig(BaseModel):
     out_format: Literal["wav", "flac", "mp3"] = "wav"
 
 
+class LoudnormConfig(BaseModel):
+    """响度归一配置。"""
+
+    target_lufs: float = Field(default=-14.0, ge=-36.0, le=-6.0)
+    peak_dbfs: float = Field(default=-1.0, ge=-12.0, le=0.0)
+    enabled: bool = True
+
+
 class TranscribeConfig(BaseModel):
     """转录配置：按 stem 路由到不同转录器。"""
 
@@ -160,6 +168,7 @@ class PipelineConfig(BaseModel):
 
 __all__ = [
     "SourceSeparationConfig",
+    "LoudnormConfig",
     "TranscribeConfig",
     "RhythmConfig",
     "ChordConfig",
