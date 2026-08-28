@@ -3,7 +3,14 @@ from __future__ import annotations
 
 import pytest
 
-from mujik.midi.model import Note, Project, TempoSegment, Track
+from mujik.config.schema import RenderConfig
+from mujik.midi.model import (
+    ChordEvent,
+    Note,
+    Project,
+    TempoSegment,
+    Track,
+)
 from mujik.score.builder import (
     MusicXMLBuilderError,
     _pitch_to_xml_parts,
@@ -189,3 +196,65 @@ class TestBuildMusicxml:
         xml = build_musicxml(proj)
         # empty part → 1 measure with whole rest
         assert "<rest/>" in xml
+
+    def test_pitch_bend_renders_bend_element(self):
+        """v0.4.1: Note.pitch_bend 非空时输出 <bend> 元素。"""
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 1.0, 60, 100, pitch_bend=(0.0, 0.5, 0.5, 0.0)),
+            ], "vocals"),
+        })
+        xml = build_musicxml(proj)
+        assert "<bend" in xml
+        assert "<bend-alter>1</bend-alter>" in xml  # 0.5 * 2 = 1
+
+    def test_no_bend_skips_bend_element(self):
+        """v0.4.1: pitch_bend 为空时不应出现 <bend> 元素。"""
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 1.0, 60, 100),
+            ], "vocals"),
+        })
+        xml = build_musicxml(proj)
+        assert "<bend" not in xml
+        assert "<bend-alter>" not in xml
+
+    def test_chord_symbols_render_harmony_element(self):
+        """v0.4.1: chord_track + include_chord_symbols=True → <harmony>。"""
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 0.5, 60, 100),
+                Note(0.5, 1.0, 62, 90),
+            ], "vocals"),
+        })
+        proj.chord_track = [
+            ChordEvent(start=0.0, end=2.0, root="C", quality="maj7"),
+        ]
+        xml = build_musicxml(proj, config=RenderConfig(include_chord_symbols=True))
+        assert "<harmony>" in xml
+        assert "<root-step>C</root-step>" in xml
+        assert "<kind>major-seventh</kind>" in xml
+
+    def test_chord_symbols_disabled_skips_harmony(self):
+        """v0.4.1: include_chord_symbols=False 时不输出 <harmony>（向后兼容）。"""
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 0.5, 60, 100),
+            ], "vocals"),
+        })
+        proj.chord_track = [
+            ChordEvent(start=0.0, end=2.0, root="C", quality=""),
+        ]
+        xml = build_musicxml(proj, config=RenderConfig(include_chord_symbols=False))
+        assert "<harmony>" not in xml
+
+    def test_chord_symbols_no_chord_track_skips_harmony(self):
+        """v0.4.1: chord_track 为 None 时不输出 <harmony>。"""
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 0.5, 60, 100),
+            ], "vocals"),
+        })
+        # chord_track=None (默认)
+        xml = build_musicxml(proj, config=RenderConfig(include_chord_symbols=True))
+        assert "<harmony>" not in xml

@@ -1,9 +1,9 @@
-"""MusicXML builder（v0.2.4）：Project → MusicXML 字符串。
+"""MusicXML builder（v0.2.4 起 music21-free，v0.4.1 加 <bend>+<harmony>）。
 
 输出格式：MusicXML 3.1 partwise（Verovio 标准输入）。
 
-约定（v0.2.4）：
-- 使用 music21 stream API 构造
+约定（v0.2.4 → v0.4.1）：
+- music21-free：纯 Python + XML 字符串拼接
 - 每 stem 一个 <part>，drums 单独 part
 - layout="per_stem"：4-6 个独立 part
 - layout="piano_reduction"：调 merge_tracks 拿 reduction 单 part + drums + vocals
@@ -11,6 +11,8 @@
 - PPQ 默认 480
 - 跨 measure 的 note 用 <tie> 处理
 - include_chord_symbols=True → 调 project.chord_track 渲染 <harmony>
+  （v0.4.1 实现）
+- Note.pitch_bend → 渲染 <bend>（v0.4.1 实现）
 - include_lyrics：v0.2.4 no-op（Project 无 lyric 字段）
 - 鼓轨（channel=9）默认 single-line percussion staff
 """
@@ -23,6 +25,8 @@ from loguru import logger
 from mujik.config.schema import RenderConfig
 from mujik.merge.core import merge_tracks
 from mujik.midi.model import Note, Project, StemName, Track, TempoSegment
+from mujik.score.bend import build_bend_element, pitch_bend_to_alter
+from mujik.score.harmony import build_harmony_element, find_chord_at_time
 from mujik.score.time_helpers import (
     bpm_at_time,
     measure_index_at_time,
@@ -251,7 +255,22 @@ def _build_measure_musicxml(
     ppq: int,
     include_chord_symbols: bool,
 ) -> str:
-    """构造单个 <measure> 的 XML。"""
+    """构造单个 <measure> 的 XML。
+
+    v0.4.1 起：
+    - ``include_chord_symbols=True`` 时，若 ``project.chord_track`` 有
+      覆盖该 measure 起始时间的 chord，在第一个 note 之前插入 ``<harmony>``
+    - ``note.pitch_bend`` 非空且 alter != 0 时，在该 note ``<type>`` 之后
+      插入 ``<bend>`` 元素
+    """
+    # v0.4.1: 找覆盖 measure 起始时间的 chord（measure 内仅发一次 harmony）
+    harmony_xml = ""
+    if include_chord_symbols and project.chord_track and notes:
+        first_note_start = notes[0].start
+        chord = find_chord_at_time(project.chord_track, first_note_start)
+        if chord is not None:
+            harmony_xml = "      " + build_harmony_element(chord) + "\n"
+
     note_xmls: list[str] = []
     for note in notes:
         step, alter, octave = _pitch_to_xml_parts(note.pitch)
@@ -261,6 +280,11 @@ def _build_measure_musicxml(
         alter_xml = f"<alter>{alter}</alter>" if alter != 0 else ""
         # duration type (simplified)
         type_str = _ticks_to_type(dur, ppq)
+        # v0.4.1: pitch_bend → <bend>
+        bend_alter = pitch_bend_to_alter(note.pitch_bend)
+        bend_xml = ""
+        if bend_alter != 0:
+            bend_xml = "\n          " + build_bend_element(bend_alter)
         note_xmls.append(
             f"""        <note>
           <pitch>
@@ -270,7 +294,7 @@ def _build_measure_musicxml(
           </pitch>
           <duration>{dur}</duration>
           <voice>1</voice>
-          <type>{type_str}</type>
+          <type>{type_str}</type>{bend_xml}
         </note>"""
         )
     notes_str = "\n".join(note_xmls) if note_xmls else _rest_xml(ppq)
@@ -282,7 +306,7 @@ def _build_measure_musicxml(
         <time><beats>{sig[0]}</beats><beat-type>{sig[1]}</beat-type></time>
         <clef><sign>G</sign><line>2</line></clef>
       </attributes>
-{notes_str}
+{harmony_xml}{notes_str}
     </measure>"""
 
 

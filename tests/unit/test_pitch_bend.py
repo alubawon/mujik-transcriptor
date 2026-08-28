@@ -26,19 +26,22 @@ def _mock_instrument(name: str = "test"):
 
 class TestBendConversion:
     def test_zero_bend_center(self):
-        assert bend_to_pretty_pitch(0.0) == 8192  # PITCH_BEND_CENTER
+        # v0.4.1: mido 1.3.x signed range, center = 0
+        assert bend_to_pretty_pitch(0.0) == 0  # PITCH_BEND_CENTER
 
     def test_positive_full_bend(self):
-        assert bend_to_pretty_pitch(1.0) == 16383
+        # v0.4.1: max = 8191 (mido signed)
+        assert bend_to_pretty_pitch(1.0) == 8191
 
     def test_negative_full_bend(self):
-        assert bend_to_pretty_pitch(-1.0) == 0
+        # v0.4.1: min = -8192 (mido signed)
+        assert bend_to_pretty_pitch(-1.0) == -8192
 
     def test_clamp_high(self):
-        assert bend_to_pretty_pitch(1.5) == 16383
+        assert bend_to_pretty_pitch(1.5) == 8191
 
     def test_clamp_low(self):
-        assert bend_to_pretty_pitch(-1.5) == 0
+        assert bend_to_pretty_pitch(-1.5) == -8192
 
     def test_round_trip(self):
         for v in (-1.0, -0.5, 0.0, 0.5, 1.0):
@@ -47,10 +50,11 @@ class TestBendConversion:
             assert recovered == pytest.approx(v, abs=0.001)
 
     def test_pretty_pitch_to_bend(self):
-        assert pretty_pitch_to_bend(0) == -1.0
-        assert pretty_pitch_to_bend(16383) == 1.0
-        # 8192 接近中心，但 int 舍入后非完全 0；用 approx
-        assert pretty_pitch_to_bend(8192) == pytest.approx(0.0, abs=1e-3)
+        # v0.4.1: mido signed range
+        assert pretty_pitch_to_bend(-8192) == pytest.approx(-1.0, abs=1e-3)
+        assert pretty_pitch_to_bend(8191) == pytest.approx(1.0, abs=1e-3)
+        # center = 0
+        assert pretty_pitch_to_bend(0) == 0.0
 
 
 class TestInjectPitchBends:
@@ -84,8 +88,9 @@ class TestInjectPitchBends:
         bend_seq = (-1.0, -0.5, 0.0, 0.5, 1.0)
         notes = [Note(0.0, 0.05, 60, 100, pitch_bend=bend_seq)]
         inject_pitch_bends_to_pretty_midi(inst, notes)
+        # v0.4.1: mido signed range
         for pb in inst.pitch_bends:
-            assert 0 <= pb.pitch <= 16383
+            assert -8192 <= pb.pitch <= 8191
 
     def test_multiple_notes(self):
         inst = _mock_instrument()
