@@ -74,6 +74,13 @@ transcribe-bytedance = [
 transcribe-muscriptor = [
   "muscriptor>=0.3",
 ]
+# v0.4.4: chord recognition via madmom CRNN
+# madmom (BSD-3) 通过 subprocess 隔离调 `CNNChordFeatureProcessor +
+# CRFChordRecognitionProcessor`，仅输出 major/minor 两种 quality。
+# 7th / 延伸和弦留 v0.4.5+ BTC-HCQT。
+chord = [
+  "madmom>=0.16",
+]
 preprocess-denoise = [
   "nnnoiseless>=0.1",
   "scipy>=1.10",
@@ -87,7 +94,7 @@ bench = [
   "pytest-benchmark>=4.0",
 ]
 all = [
-  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,preprocess-denoise,render]",
+  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,preprocess-denoise,render,chord]",
 ]
 dev = [
   "pytest>=7.4",

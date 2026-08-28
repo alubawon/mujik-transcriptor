@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/10] generate synthetic wav → {fixture_path}")
+    print(f"[1/11] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/10] output dir: {out_dir}")
+        print(f"[2/11] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/10] mock heavy adapters...")
+        print("[3/11] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -89,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/10] run pipeline (mocked)...")
+        print("[4/11] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -121,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/10] verify pipeline outputs...")
+        print("[5/11] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -140,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -155,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/10] run mujik quantize (v0.2.3)...")
+        print("[6/11] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -176,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/10] run mujik render (v0.2.4)...")
+        print("[7/11] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -224,7 +224,7 @@ def main() -> int:
             print(f"      project.pdf: skipped ({e})")
 
         # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>；v0.4.3 验证：release 模式
-        print("[8/10] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
+        print("[8/11] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
         from mujik.config.schema import RenderConfig
         from mujik.midi.model import ChordEvent
 
@@ -287,7 +287,7 @@ def main() -> int:
         print(f"      v0.4.3 release curve: {n_bend_tags} <bend> siblings + <release/> marker")
 
         # 9. v0.4.2 验证：muscriptor multitrack adapter 配置 + 解析
-        print("[9/10] verify v0.4.2 muscriptor adapter...")
+        print("[9/11] verify v0.4.2 muscriptor adapter...")
         from mujik.config.schema import TranscribeConfig
         from mujik.transcribe.muscriptor_adapter import (
             MuscriptorAdapterError,
@@ -324,7 +324,7 @@ def main() -> int:
         print(f"      muscriptor adapter: {len(VALID_MUSCRIPTOR_MODELS)} valid models, subprocess-based")
 
         # 10. v0.4.3 验证：连续 bend 曲线渲染
-        print("[10/10] verify v0.4.3 continuous bend curve rendering...")
+        print("[10/11] verify v0.4.3 continuous bend curve rendering...")
         from mujik.score.bend import (
             BendPoint,
             build_bend_elements,
@@ -375,7 +375,86 @@ def main() -> int:
         print(f"      build_bend_elements: 2 <bend> siblings + <release/> ✓")
         print(f"      end-to-end MusicXML: shape=\"curved\" + bend+release ✓")
 
-        print("\n✅ E2E smoke test PASSED (v0.4.3)")
+        # 11. v0.4.4 验证：自动和弦检测（madmom subprocess）
+        print("[11/11] verify v0.4.4 automatic chord detection...")
+        from mujik.chord.madmom_adapter import (
+            MADMOM_CHORD_TIMEOUT_DEFAULT,
+            MadmomChordAdapterError,
+            _parse_madmom_chord_label,
+            check_madmom_chord_available,
+            detect_chords_with_madmom,
+        )
+        from mujik.midi.model import ChordEvent as ChordEventModel
+        from mujik.config.schema import ChordConfig
+
+        # 验证 _parse_madmom_chord_label
+        c_maj = _parse_madmom_chord_label("C:maj")
+        assert c_maj is not None
+        assert c_maj.root == "C"
+        assert c_maj.quality == ""
+        c_min = _parse_madmom_chord_label("F#:min")
+        assert c_min is not None
+        assert c_min.root == "F#"
+        assert c_min.quality == "m"
+        assert _parse_madmom_chord_label("N") is None
+        assert _parse_madmom_chord_label("X") is None
+
+        # 验证 ChordConfig 新增 chord_timeout_sec
+        cfg_ch = ChordConfig()
+        assert cfg_ch.chord_timeout_sec == 1800
+        cfg_ch_custom = ChordConfig(chord_timeout_sec=600)
+        assert cfg_ch_custom.chord_timeout_sec == 600
+
+        # 验证 madmom adapter 模块可 import
+        assert callable(check_madmom_chord_available)
+        assert callable(detect_chords_with_madmom)
+        assert MADMOM_CHORD_TIMEOUT_DEFAULT == 1800
+        try:
+            raise MadmomChordAdapterError("test")
+        except MadmomChordAdapterError as e:
+            assert "test" in str(e)
+
+        # 验证 detect_chords_with_madmom subprocess 流程（mock）
+        # 写 fake JSON 到 out_dir，验证解析
+        chord_json_path = out_dir / f"chords_{fixture_path.stem}.json"
+        chord_json_path.write_text(json.dumps([
+            {"start": 0.0, "end": 2.0, "label": "C:maj"},
+            {"start": 2.0, "end": 4.0, "label": "F:maj"},
+            {"start": 4.0, "end": 4.5, "label": "N"},
+        ]))
+        with patch("subprocess.run",
+                   return_value=MagicMock(returncode=0, stderr="")):
+            chord_track = detect_chords_with_madmom(
+                fixture_path, out_dir=out_dir,
+            )
+        # 3 entries → 2 ChordEvent（N 过滤）
+        assert len(chord_track) == 2
+        assert chord_track[0].root == "C" and chord_track[0].quality == ""
+        assert chord_track[1].root == "F" and chord_track[1].quality == ""
+
+        # 验证端到端：chord_track 注入 Project → MusicXML <harmony>
+        proj_chord = read_midi_to_project(str(midi_path))
+        proj_chord.chord_track = [
+            ChordEventModel(0.0, 1.0, "C", ""),     # C major
+            ChordEventModel(1.0, 2.0, "A", "m"),    # A minor
+        ]
+        xml_chord = build_musicxml(
+            proj_chord,
+            config=RenderConfig(include_chord_symbols=True),
+            layout="per_stem",
+        )
+        assert "<harmony>" in xml_chord
+        assert "<root-step>C</root-step>" in xml_chord
+        assert "<kind>major</kind>" in xml_chord
+        assert "<root-step>A</root-step>" in xml_chord
+        assert "<kind>minor</kind>" in xml_chord
+
+        print(f"      _parse_madmom_chord_label: C:maj/F#:min/N/X parsed ✓")
+        print(f"      ChordConfig.chord_timeout_sec: {cfg_ch.chord_timeout_sec}s ✓")
+        print(f"      detect_chords_with_madmom: subprocess mock returns 2 chords ✓")
+        print(f"      end-to-end: chord_track → MusicXML <harmony> ✓")
+
+        print("\n✅ E2E smoke test PASSED (v0.4.4)")
     return 0
 
 

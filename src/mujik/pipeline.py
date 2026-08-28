@@ -151,6 +151,42 @@ class Pipeline:
             time_sigs = build_default_segments(duration if duration > 0 else 1.0)
             logger.info("pipeline[2.5/7]: rhythm skipped (disabled)")
 
+        # ---- 2.7/7 和弦识别（chord 层，v0.4.4 新增）----
+        chord_track: list = []
+        if cfg.chord.enabled:
+            try:
+                from mujik.chord.madmom_adapter import detect_chords_with_madmom
+                chord_track = detect_chords_with_madmom(
+                    sep_input, config=cfg.chord, out_dir=out_dir,
+                )
+                # 写 out/chords.json
+                (out_dir / "chords.json").write_text(json.dumps(
+                    [
+                        {
+                            "start": c.start,
+                            "end": c.end,
+                            "root": c.root,
+                            "quality": c.quality,
+                            "bass": c.bass,
+                        }
+                        for c in chord_track
+                    ],
+                    ensure_ascii=False, indent=2,
+                ))
+                logger.info(
+                    "pipeline[2.7/7]: chord: {n} chords detected",
+                    n=len(chord_track),
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "pipeline[2.7/7]: madmom chord failed: {err}, "
+                    "skipping (chord_track=[])",
+                    err=e,
+                )
+                chord_track = []
+        else:
+            logger.info("pipeline[2.7/7]: chord skipped (disabled)")
+
         # ---- 3. 源分离 OR muscriptor multitrack 模式分支（v0.4.2）----
         if cfg.transcribe.mode == "multitrack":
             # v0.4.2 multitrack 模式：跳过源分离，直接 muscriptor 多乐器转录
@@ -167,11 +203,13 @@ class Pipeline:
             project.sample_rate = sample_rate
             project.time_signatures = time_sigs
             project.tempo_map = [tempo]
+            project.chord_track = chord_track  # v0.4.4
             project.metadata.update({
-                "mujik_version": "0.4.2",
+                "mujik_version": "0.4.4",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
+                "chord_enabled": cfg.chord.enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
                 "transcribe_mode": "multitrack",
@@ -201,11 +239,13 @@ class Pipeline:
             sample_rate=sample_rate,
             time_signatures=time_sigs,
             tempo_map=[tempo],
+            chord_track=chord_track,  # v0.4.4
             metadata={
-                "mujik_version": "0.4.2",
+                "mujik_version": "0.4.4",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
+                "chord_enabled": cfg.chord.enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
                 "separator": stems.separation_model,

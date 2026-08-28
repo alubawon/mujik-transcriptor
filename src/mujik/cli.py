@@ -432,7 +432,92 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_mt.set_defaults(func=cmd_multitrack)
 
+    # chords (v0.4.4)
+    p_ch = sub.add_parser(
+        "chords",
+        help="detect chords from audio via madmom (v0.4.4, major/minor only)",
+    )
+    p_ch.add_argument("--input", "-i", required=True, help="input audio file")
+    p_ch.add_argument(
+        "--output", "-o", required=True,
+        help="output chords.json path (or directory; default: <stem>.chords.json)",
+    )
+    p_ch.add_argument(
+        "--timeout", type=int, default=1800,
+        help="subprocess timeout in seconds (default 1800)",
+    )
+    p_ch.set_defaults(func=cmd_chords)
+
     return parser
+
+
+def cmd_chords(args: argparse.Namespace) -> int:
+    """v0.4.4: 用 madmom CRNN 检测和弦 → 写 chords.json。
+
+    输出 major / minor 两种 quality（madmom CRNN 限制）；
+    7th / 延伸和弦留 v0.4.5+ 用 BTC-HCQT。
+    """
+    audio_path = Path(args.input)
+    if not audio_path.exists():
+        logger.error(f"input not found: {audio_path}")
+        return 1
+
+    from mujik.chord.madmom_adapter import (
+        MadmomChordAdapterError,
+        check_madmom_chord_available,
+        detect_chords_with_madmom,
+    )
+
+    if not check_madmom_chord_available():
+        logger.error(
+            "madmom not installed. Install via `uv pip install madmom` "
+            "(or `pip install mujik-transcriptor[chord]`)"
+        )
+        return 2
+
+    # 解析 output 路径：如果是目录 → <stem>.chords.json
+    out_path = Path(args.output)
+    if out_path.is_dir() or str(args.output).endswith("/"):
+        out_path.mkdir(parents=True, exist_ok=True)
+        out_path = out_path / f"{audio_path.stem}.chords.json"
+    else:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # 用临时 out_dir 给 madmom adapter 写 wrapper + 中间 JSON
+    out_dir = out_path.parent
+    try:
+        from mujik.config.schema import ChordConfig
+        chord_cfg = ChordConfig(chord_timeout_sec=args.timeout)
+        chord_track = detect_chords_with_madmom(
+            audio_path, config=chord_cfg, out_dir=out_dir,
+        )
+    except MadmomChordAdapterError as e:
+        logger.error(f"madmom chord failed: {e}")
+        return 3
+    except subprocess.TimeoutExpired:
+        logger.error(f"madmom chord timeout after {args.timeout}s")
+        return 4
+    except Exception as e:
+        logger.error(f"unexpected error: {e}")
+        return 5
+
+    out_path.write_text(json.dumps(
+        [
+            {
+                "start": c.start,
+                "end": c.end,
+                "root": c.root,
+                "quality": c.quality,
+                "bass": c.bass,
+            }
+            for c in chord_track
+        ],
+        ensure_ascii=False, indent=2,
+    ))
+    logger.info(
+        f"chords done: {len(chord_track)} chords → {out_path}"
+    )
+    return 0
 
 
 def main(argv: list[str] | None = None) -> int:

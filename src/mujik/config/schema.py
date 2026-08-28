@@ -107,6 +107,7 @@ class ChordConfig(BaseModel):
     enabled: bool = False
     models: list[str] = Field(default_factory=lambda: ["btc-hcqt", "chord-cnn-lstm"])
     vocab: Literal["root", "root-quality", "extended"] = "extended"
+    chord_timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
 
 class QuantizeConfig(BaseModel):
