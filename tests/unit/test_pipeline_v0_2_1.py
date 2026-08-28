@@ -194,6 +194,6 @@ class TestProjectMetadata:
 
         import json
         meta = json.loads((tmp_path / "out" / "project.json").read_text())
-        assert meta["mujik_version"] in ("0.2.1", "0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4")
+        assert meta["mujik_version"] in ("0.2.1", "0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5")
         assert meta["preset"] == "pop"
         assert "demucs" in meta["separator"]

@@ -109,6 +109,16 @@ class ChordConfig(BaseModel):
     vocab: Literal["root", "root-quality", "extended"] = "extended"
     chord_timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
+    # v0.4.5: chord quantize 到 bar/beat
+    # 关闭时直接用 madmom 原始输出（100ms 帧粒度）
+    quantize_enabled: bool = True
+    # grid_per_bar: 1=整 bar / 2=half-bar / 4=beat / 8=8th
+    grid_per_bar: Literal[1, 2, 4, 8] = 4
+    # 合并相邻同 root+quality 的 chord
+    merge_consecutive: bool = True
+    # 丢弃短于此秒数的 chord（madmom 误识别通常很短）
+    min_duration_sec: float = Field(default=0.5, ge=0.0, le=10.0)
+
 
 class QuantizeConfig(BaseModel):
     """节拍量化配置。"""

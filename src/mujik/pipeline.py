@@ -187,6 +187,50 @@ class Pipeline:
         else:
             logger.info("pipeline[2.7/7]: chord skipped (disabled)")
 
+        # ---- 2.8/7 chord quantize（v0.4.5 新增）----
+        quantized_chord_track: list = chord_track
+        if cfg.chord.enabled and cfg.chord.quantize_enabled and chord_track:
+            try:
+                from mujik.chord.quantize import quantize_chord_track
+                quantized_chord_track = quantize_chord_track(
+                    chord_track,
+                    time_sigs,
+                    tempo.bpm,
+                    grid_per_bar=cfg.chord.grid_per_bar,
+                    merge_consecutive=cfg.chord.merge_consecutive,
+                    min_duration_sec=cfg.chord.min_duration_sec,
+                    duration=duration,
+                )
+                # 写 out/chords_quantized.json（保留原始 + 量化两份）
+                (out_dir / "chords_quantized.json").write_text(json.dumps(
+                    [
+                        {
+                            "start": c.start,
+                            "end": c.end,
+                            "root": c.root,
+                            "quality": c.quality,
+                            "bass": c.bass,
+                        }
+                        for c in quantized_chord_track
+                    ],
+                    ensure_ascii=False, indent=2,
+                ))
+                logger.info(
+                    "pipeline[2.8/7]: chord quantize: {n_in} → {n_out} (grid={g}/bar)",
+                    n_in=len(chord_track),
+                    n_out=len(quantized_chord_track),
+                    g=cfg.chord.grid_per_bar,
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "pipeline[2.8/7]: chord quantize failed: {err}, "
+                    "using raw chord_track",
+                    err=e,
+                )
+                quantized_chord_track = chord_track
+        else:
+            logger.info("pipeline[2.8/7]: chord quantize skipped")
+
         # ---- 3. 源分离 OR muscriptor multitrack 模式分支（v0.4.2）----
         if cfg.transcribe.mode == "multitrack":
             # v0.4.2 multitrack 模式：跳过源分离，直接 muscriptor 多乐器转录
@@ -203,13 +247,14 @@ class Pipeline:
             project.sample_rate = sample_rate
             project.time_signatures = time_sigs
             project.tempo_map = [tempo]
-            project.chord_track = chord_track  # v0.4.4
+            project.chord_track = quantized_chord_track  # v0.4.5
             project.metadata.update({
-                "mujik_version": "0.4.4",
+                "mujik_version": "0.4.5",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
                 "chord_enabled": cfg.chord.enabled,
+                "chord_quantize_enabled": cfg.chord.quantize_enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
                 "transcribe_mode": "multitrack",
@@ -239,13 +284,14 @@ class Pipeline:
             sample_rate=sample_rate,
             time_signatures=time_sigs,
             tempo_map=[tempo],
-            chord_track=chord_track,  # v0.4.4
+            chord_track=quantized_chord_track,  # v0.4.5
             metadata={
-                "mujik_version": "0.4.4",
+                "mujik_version": "0.4.5",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
                 "chord_enabled": cfg.chord.enabled,
+                "chord_quantize_enabled": cfg.chord.quantize_enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
                 "separator": stems.separation_model,
