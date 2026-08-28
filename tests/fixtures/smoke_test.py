@@ -139,7 +139,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] == "0.2.2"
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 

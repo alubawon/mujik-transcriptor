@@ -200,6 +200,14 @@ def write_project_to_midi(
                     end=float(note.end),
                 )
             )
+        # v0.4.0: 注入 pitch_bend（per-frame → pretty_midi events）
+        from mujik.postprocess.pitch_bend import inject_pitch_bends_to_pretty_midi
+        n_bends = inject_pitch_bends_to_pretty_midi(inst, track.notes)
+        if n_bends > 0:
+            logger.debug(
+                "midi write: {stem} → {n} pitch_bend events",
+                stem=track.stem_name, n=n_bends,
+            )
         pm.instruments.append(inst)
         logger.debug(
             "midi write: {stem} → {n} notes (channel={ch})",
@@ -305,14 +313,21 @@ def read_midi_to_project(
         else:
             stem = _instrument_name_to_stem(inst.name) or _program_to_stem(inst.program) or "other"
         track = project.get_track(stem)
+        notes_list: list[Note] = []
         for n in inst.notes:
-            track.add(Note(
+            notes_list.append(Note(
                 start=float(n.start),
                 end=float(n.end),
                 pitch=int(n.pitch),
                 velocity=int(n.velocity),
                 channel=DRUM_CHANNEL if inst.is_drum else 0,
             ))
+        # v0.4.0: 反向提取 pitch_bend 事件 → Note.pitch_bend
+        if not inst.is_drum and inst.pitch_bends:
+            from mujik.postprocess.pitch_bend import extract_pitch_bends_from_pretty_midi
+            notes_list = extract_pitch_bends_from_pretty_midi(inst, notes_list)
+        for n in notes_list:
+            track.add(n)
 
     logger.info(
         "midi read: {n} tracks, {m} notes from {path}",

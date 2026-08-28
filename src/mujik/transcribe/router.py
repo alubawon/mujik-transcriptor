@@ -68,12 +68,15 @@ def transcribe_stem(
             out_dir=out_dir,
         )
     if adapter_name == "bytedance-piano":
-        raise RouterError(
-            f"piano stem 暂未实现 (v0.4+ ByteDance piano): {stem.name}"
+        from mujik.transcribe.bytedance_piano_adapter import transcribe_piano_bytedance
+        return transcribe_piano_bytedance(
+            stem.audio_path,
+            config=cfg,
+            out_dir=out_dir,
         )
     if adapter_name == "apollo":
         raise RouterError(
-            f"guitar stem 暂未实现 (v0.4+ Apollo): {stem.name}"
+            f"guitar stem 暂未实现 (v0.4.1+ Apollo): {stem.name}"
         )
     raise RouterError(f"unknown adapter '{adapter_name}' for stem '{stem.name}'")
 

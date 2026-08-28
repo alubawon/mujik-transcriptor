@@ -54,13 +54,34 @@ class Pipeline:
             path=audio_path, dur=duration, sr=sample_rate,
         )
 
+        # ---- 1.5 去噪（v0.4.0 新增）----
+        if cfg.preprocess.denoise_enabled:
+            try:
+                from mujik.preprocess.denoise import denoise
+                denoised_path = denoise(
+                    audio_path, config=cfg.preprocess,
+                    out_path=out_dir / f"denoised_{audio_path.name}",
+                )
+                # 后续步骤用去噪后的文件
+                audio_path_for_sep = denoised_path
+                logger.info("pipeline[1.5/7]: denoise done → {}", denoised_path)
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "pipeline[1.5/7]: denoise failed: {err}, use original",
+                    err=e,
+                )
+                audio_path_for_sep = audio_path
+        else:
+            audio_path_for_sep = audio_path
+            logger.info("pipeline[1.5/7]: denoise skipped (disabled)")
+
         # ---- 2. 响度归一 ----
         if cfg.loudnorm.enabled:
-            norm_path = normalize_loudness(audio_path, config=cfg.loudnorm)
+            norm_path = normalize_loudness(audio_path_for_sep, config=cfg.loudnorm)
             sep_input = norm_path
             logger.info("pipeline[2/7]: loudnorm done → {}", norm_path)
         else:
-            sep_input = audio_path
+            sep_input = audio_path_for_sep
             logger.info("pipeline[2/7]: loudnorm skipped (disabled)")
 
         # ---- 2.5/2.6 节拍 + 时间签名（rhythm 层，v0.2.2 新增）----
@@ -148,10 +169,12 @@ class Pipeline:
             time_signatures=time_sigs,
             tempo_map=[tempo],
             metadata={
-                "mujik_version": "0.2.2",
+                "mujik_version": "0.4.0",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
+                "denoise_enabled": cfg.preprocess.denoise_enabled,
+                "denoise_backend": cfg.preprocess.denoise_backend,
                 "separator": stems.separation_model,
             },
         )

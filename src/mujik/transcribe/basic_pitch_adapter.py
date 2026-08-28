@@ -130,16 +130,35 @@ def transcribe_with_basic_pitch(
             if not (0 <= velocity <= 127):
                 velocity = max(0, min(127, velocity))
 
+            # v0.4.0: 解析 pitch_bend 列（JSON list of floats in [-1, 1]）
+            pitch_bend: tuple[float, ...] = ()
+            bend_str = row.get("pitch_bend", "").strip()
+            if bend_str:
+                try:
+                    import json
+                    bend_list = json.loads(bend_str)
+                    if isinstance(bend_list, list):
+                        # 校验每个值
+                        pitch_bend = tuple(
+                            max(-1.0, min(1.0, float(v))) for v in bend_list
+                        )
+                except (json.JSONDecodeError, ValueError, TypeError) as e:
+                    logger.debug("basic-pitch: skip pitch_bend parse: {}", e)
+
             notes.append(Note(
                 start=start,
                 end=max(end, start + 0.01),  # 至少 10ms
                 pitch=pitch,
                 velocity=velocity,
                 channel=0,  # pitched stem 用 channel 0
+                pitch_bend=pitch_bend,
             ))
 
     notes.sort(key=lambda n: n.start)
-    logger.info("basic-pitch: {n} notes", n=len(notes))
+    logger.info(
+        "basic-pitch: {n} notes ({b} with pitch_bend)",
+        n=len(notes), b=sum(1 for x in notes if x.pitch_bend),
+    )
     return notes
 
 

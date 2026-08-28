@@ -30,3 +30,24 @@ This MIT-licensed main project deliberately keeps GPL components
 
 These communicate with the main project via HTTP API and MusicXML/MIDI
 interchange format, so GPL does NOT "infect" the main codebase.
+
+---
+
+Non-commercial use declaration (v0.4.0+):
+The maintainers of mujik-transcriptor commit to using this software for
+non-commercial purposes only. This is a statement of intent, not a
+legal re-licensing; the code itself remains MIT-licensed for downstream
+users who may have different intentions.
+
+If you are a commercial entity, you are advised to:
+  1. Review the dependencies you actually pull in (especially extras
+     marked `transcribe-*` and `preprocess-*`)
+  2. Confirm any model weights (e.g. ByteDance piano MAESTRO checkpoint)
+     are compatible with your intended use
+  3. Note that this declaration reflects maintainer intent only and
+     does not retroactively re-license the MIT code
+
+Rationale: The user/maintainer of mujik-transcriptor uses it for
+personal/educational music transcription, and explicitly opts out of
+enabling CC-BY-NC-only dependencies (like the standalone
+facebookresearch/denoiser) in production paths.
