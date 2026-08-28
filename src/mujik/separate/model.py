@@ -66,8 +66,8 @@ class Stems:
         return self.stems[name]
 
     def primary_stems(self) -> list[Stem]:
-        """返回 4-stem 模式下应有的核心 stem。"""
-        return [self.stems[n] for n in ("vocals", "drums", "bass", "other") if n in self.stems]
+        """返回所有 stem（v0.4.0 改为全集，5/6-stem 自动覆盖）。"""
+        return list(self.stems.values())
 
 
 __all__ = [

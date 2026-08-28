@@ -35,6 +35,14 @@ class LoudnormConfig(BaseModel):
     enabled: bool = True
 
 
+class PreprocessConfig(BaseModel):
+    """预处理配置（v0.4.0：denoise 加入）。"""
+
+    denoise_enabled: bool = False
+    denoise_backend: Literal["nnnoiseless", "demucs"] = "nnnoiseless"
+    demucs_device: Literal["cuda", "cpu", "mps"] = "cpu"
+
+
 class TranscribeConfig(BaseModel):
     """转录配置：按 stem 路由到不同转录器。"""
 
@@ -137,6 +145,7 @@ class PipelineConfig(BaseModel):
     preset: Literal["pop", "jazz", "metal", "custom"] = "custom"
 
     source_separation: SourceSeparationConfig = Field(default_factory=SourceSeparationConfig)
+    preprocess: PreprocessConfig = Field(default_factory=PreprocessConfig)
     loudnorm: LoudnormConfig = Field(default_factory=LoudnormConfig)
     transcribe: TranscribeConfig = Field(default_factory=TranscribeConfig)
     rhythm: RhythmConfig = Field(default_factory=RhythmConfig)
@@ -204,5 +213,6 @@ __all__ = [
     "QuantizeConfig",
     "MergeConfig",
     "RenderConfig",
+    "PreprocessConfig",
     "PipelineConfig",
 ]

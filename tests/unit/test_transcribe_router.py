@@ -58,12 +58,17 @@ class TestRouting:
             transcribe_stem(stem)
             assert mock_adtof.called
 
-    def test_piano_not_implemented(self):
+    def test_piano_dispatches_to_bytedance(self):
+        """v0.4.0: piano 路由到 bytedance adapter（没装模块时抛 ByteDancePianoAdapterError）。"""
+        from mujik.transcribe.bytedance_piano_adapter import ByteDancePianoAdapterError
         stem = _make_stem("piano")
-        with pytest.raises(RouterError, match="piano"):
-            transcribe_stem(stem)
+        with patch("mujik.transcribe.bytedance_piano_adapter.check_bytedance_piano_available",
+                   return_value=False):
+            with pytest.raises(ByteDancePianoAdapterError):
+                transcribe_stem(stem)
 
     def test_guitar_not_implemented(self):
+        """v0.4.0: guitar 仍未实现，留 v0.4.1。"""
         stem = _make_stem("guitar")
         with pytest.raises(RouterError, match="guitar"):
             transcribe_stem(stem)

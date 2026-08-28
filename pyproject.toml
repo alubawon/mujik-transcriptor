@@ -65,11 +65,23 @@ transcribe-tf = [
   "basic-pitch>=0.4",
   "numpy>=1.26,<2.0",
 ]
+transcribe-bytedance = [
+  "piano_transcription_inference @ git+https://github.com/qiuqiangkong/piano_transcription_inference",
+]
+preprocess-denoise = [
+  "nnnoiseless>=0.1",
+  "scipy>=1.10",
+]
 render = [
   "verovio>=6.0",
 ]
+bench = [
+  "mir_eval>=0.7",
+  "museval>=0.4",
+  "pytest-benchmark>=4.0",
+]
 all = [
-  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,render]",
+  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,preprocess-denoise,render]",
 ]
 dev = [
   "pytest>=7.4",
