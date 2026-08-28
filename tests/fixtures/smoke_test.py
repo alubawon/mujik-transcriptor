@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/9] generate synthetic wav → {fixture_path}")
+    print(f"[1/10] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/9] output dir: {out_dir}")
+        print(f"[2/10] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/9] mock heavy adapters...")
+        print("[3/10] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -89,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/9] run pipeline (mocked)...")
+        print("[4/10] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -121,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/9] verify pipeline outputs...")
+        print("[5/10] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -140,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -155,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/9] run mujik quantize (v0.2.3)...")
+        print("[6/10] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -176,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/9] run mujik render (v0.2.4)...")
+        print("[7/10] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -223,8 +223,8 @@ def main() -> int:
         except Exception as e:
             print(f"      project.pdf: skipped ({e})")
 
-        # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>
-        print("[8/9] verify v0.4.1 <bend> + <harmony> rendering...")
+        # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>；v0.4.3 验证：release 模式
+        print("[8/10] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
         from mujik.config.schema import RenderConfig
         from mujik.midi.model import ChordEvent
 
@@ -272,8 +272,22 @@ def main() -> int:
 
         print(f"      project_v041.musicxml: {len(musicxml_v041)} chars, contains <bend> + <harmony>")
 
+        # v0.4.3 验证：release curve → 2 个 <bend> 兄弟
+        # (0.0, 0.4, 0.5, 0.4, 0.0) → peak 0.5, post-peak 0.0 < 0.1 → has_release
+        # 用 "<bend " 带空格避免匹配 <bend-alter>
+        n_bend_tags = musicxml_v041.count("<bend ")
+        assert n_bend_tags == 2, (
+            f"v0.4.3: expected 2 <bend> siblings (bend+release), got {n_bend_tags}"
+        )
+        # 第一个 <bend>: positive alter
+        assert "<bend-alter>1</bend-alter>" in musicxml_v041
+        # 第二个 <bend>: negative alter + <release/> marker
+        assert "<bend-alter>-1</bend-alter>" in musicxml_v041
+        assert "<release/>" in musicxml_v041
+        print(f"      v0.4.3 release curve: {n_bend_tags} <bend> siblings + <release/> marker")
+
         # 9. v0.4.2 验证：muscriptor multitrack adapter 配置 + 解析
-        print("[9/9] verify v0.4.2 muscriptor adapter...")
+        print("[9/10] verify v0.4.2 muscriptor adapter...")
         from mujik.config.schema import TranscribeConfig
         from mujik.transcribe.muscriptor_adapter import (
             MuscriptorAdapterError,
@@ -309,7 +323,59 @@ def main() -> int:
         print(f"      TranscribeConfig.mode={cfg_mt.mode}, model={cfg_mt.muscriptor_model}")
         print(f"      muscriptor adapter: {len(VALID_MUSCRIPTOR_MODELS)} valid models, subprocess-based")
 
-        print("\n✅ E2E smoke test PASSED (v0.4.2)")
+        # 10. v0.4.3 验证：连续 bend 曲线渲染
+        print("[10/10] verify v0.4.3 continuous bend curve rendering...")
+        from mujik.score.bend import (
+            BendPoint,
+            build_bend_elements,
+            detect_bend_release,
+        )
+        from mujik.midi.model import Note as NoteModel
+
+        # verify detect_bend_release
+        peak, has_rel = detect_bend_release((0.0, 0.3, 0.5, 0.3, 0.0))
+        assert peak == 1 and has_rel is True, f"got peak={peak}, has_rel={has_rel}"
+
+        peak, has_rel = detect_bend_release((0.0, 0.2, 0.4, 0.5, 0.5))
+        assert peak == 1 and has_rel is False, f"got peak={peak}, has_rel={has_rel}"
+
+        # verify build_bend_elements（双 bend 兄弟）
+        xml_curve = build_bend_elements([BendPoint(0.0, 1), BendPoint(1.0, 0)])
+        assert xml_curve.count("<bend ") == 2
+        assert "<release/>" in xml_curve
+
+        # verify 端到端：单 note with release curve → MusicXML 含 2 个 <bend>
+        from mujik.score.builder import build_musicxml
+        from mujik.midi.model import Project as ProjectModel, Track
+        from mujik.time_signature.model import build_default_segments
+
+        proj_v043 = ProjectModel(
+            audio_path="test.wav",
+            duration=2.0,
+            sample_rate=44100,
+            time_signatures=build_default_segments(2.0),
+            tempo_map=[],
+        )
+        vocals_v043 = Track(stem_name="vocals")
+        vocals_v043.add(NoteModel(
+            0.0, 1.0, 60, 100,
+            pitch_bend=(0.0, 0.3, 0.5, 0.3, 0.0),
+        ))
+        proj_v043.tracks["vocals"] = vocals_v043
+        xml_v043 = build_musicxml(proj_v043, layout="per_stem")
+        assert xml_v043.count("<bend ") == 2, (
+            f"v0.4.3 builder: expected 2 <bend> for release curve, got "
+            f"{xml_v043.count('<bend ')}"
+        )
+        assert "<release/>" in xml_v043
+        # v0.4.3 新增 shape="curved"
+        assert 'shape="curved"' in xml_v043
+
+        print(f"      detect_bend_release: peak=1 has_release=True ✓")
+        print(f"      build_bend_elements: 2 <bend> siblings + <release/> ✓")
+        print(f"      end-to-end MusicXML: shape=\"curved\" + bend+release ✓")
+
+        print("\n✅ E2E smoke test PASSED (v0.4.3)")
     return 0
 
 

@@ -25,7 +25,11 @@ from loguru import logger
 from mujik.config.schema import RenderConfig
 from mujik.merge.core import merge_tracks
 from mujik.midi.model import Note, Project, StemName, Track, TempoSegment
-from mujik.score.bend import build_bend_element, pitch_bend_to_alter
+from mujik.score.bend import (
+    BendPoint,
+    build_bend_elements,
+    detect_bend_release,
+)
 from mujik.score.harmony import build_harmony_element, find_chord_at_time
 from mujik.score.time_helpers import (
     bpm_at_time,
@@ -280,11 +284,17 @@ def _build_measure_musicxml(
         alter_xml = f"<alter>{alter}</alter>" if alter != 0 else ""
         # duration type (simplified)
         type_str = _ticks_to_type(dur, ppq)
-        # v0.4.1: pitch_bend → <bend>
-        bend_alter = pitch_bend_to_alter(note.pitch_bend)
+        # v0.4.1: pitch_bend → <bend>；v0.4.3: 连续曲线 → bend+release 双 <bend>
+        peak_alter, has_release = detect_bend_release(note.pitch_bend)
         bend_xml = ""
-        if bend_alter != 0:
-            bend_xml = "\n          " + build_bend_element(bend_alter)
+        if peak_alter != 0:
+            if has_release:
+                # bend up + release: 发 2 个 <bend> 兄弟
+                curve = [BendPoint(0.0, peak_alter), BendPoint(1.0, 0)]
+            else:
+                # 单 bend（保留 v0.4.1 行为）
+                curve = [BendPoint(0.0, peak_alter)]
+            bend_xml = "\n          " + build_bend_elements(curve)
         note_xmls.append(
             f"""        <note>
           <pitch>

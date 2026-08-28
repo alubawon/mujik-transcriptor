@@ -116,7 +116,7 @@ class TestRhythmEnabled:
             Pipeline(cfg).run()
 
         meta = json.loads((tmp_path / "out" / "project.json").read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3")
         assert meta["rhythm_enabled"] is True
 
     def test_project_mid_has_tempo(self, tmp_path: Path):

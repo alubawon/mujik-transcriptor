@@ -219,6 +219,48 @@ class TestBuildMusicxml:
         assert "<bend" not in xml
         assert "<bend-alter>" not in xml
 
+    def test_bend_with_release_emits_two_siblings(self):
+        """v0.4.3: 弯音曲线有 release → 发 2 个 <bend> 兄弟。"""
+        # ramp up + 回到 0 → has_release
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 1.0, 60, 100, pitch_bend=(0.0, 0.3, 0.5, 0.3, 0.0)),
+            ], "vocals"),
+        })
+        xml = build_musicxml(proj)
+        # 2 个 <bend> 兄弟（用 "<bend " 带空格避免匹配 <bend-alter>）
+        assert xml.count("<bend ") == 2
+        # bend up
+        assert "<bend-alter>1</bend-alter>" in xml
+        # release
+        assert "<bend-alter>-1</bend-alter>" in xml
+        assert "<release/>" in xml
+
+    def test_plateau_bend_emits_single_bend(self):
+        """v0.4.3: 平台弯音（无 release）→ 单 <bend>。"""
+        # peak 在末尾，无 post-peak 返回 → 无 release
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 1.0, 60, 100, pitch_bend=(0.0, 0.2, 0.4, 0.5, 0.5)),
+            ], "vocals"),
+        })
+        xml = build_musicxml(proj)
+        # 只有 1 个 <bend>
+        assert xml.count("<bend ") == 1
+        assert "<bend-alter>1</bend-alter>" in xml
+        # 无 release marker
+        assert "<release/>" not in xml
+
+    def test_bend_curve_uses_curved_shape(self):
+        """v0.4.3: <bend> 默认带 shape="curved" 属性。"""
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 1.0, 60, 100, pitch_bend=(0.0, 0.2, 0.4, 0.5, 0.5)),
+            ], "vocals"),
+        })
+        xml = build_musicxml(proj)
+        assert 'shape="curved"' in xml
+
     def test_chord_symbols_render_harmony_element(self):
         """v0.4.1: chord_track + include_chord_symbols=True → <harmony>。"""
         proj = _project({
