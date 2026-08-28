@@ -44,17 +44,29 @@ def cmd_run(args: argparse.Namespace) -> int:
 
 
 def cmd_render(args: argparse.Namespace) -> int:
-    """单独跑渲染（用于快速迭代乐谱排版）。
+    """单独跑渲染（v0.2.4：SVG + PDF）。
 
-    v0.1：仅 SVG（Verovio 6.x Python 工具包不支持 renderToPDF）。
-    v0.3+：PDF 走 GPL 隔离的 LilyPond/MuseScore 服务。
+    支持 backend: verovio (默认) / lilypond / musescore
+    --pdf 标志：verovio backend 走 CLI subprocess 出 PDF
     """
-    from mujik.render.verovio_backend import render_musicxml_to_svg
+    from mujik.config.schema import RenderConfig
+    from mujik.render import render_musicxml_to_file
 
     musicxml = Path(args.input).read_text()
-    result = render_musicxml_to_svg(musicxml)
-    Path(args.output).write_text(result)
-    logger.info("Wrote SVG: {} ({} chars)", args.output, len(result))
+
+    # 构造 RenderConfig
+    cfg = RenderConfig(
+        pdf_backend=args.backend,
+        page_size=args.page_size,
+        include_chord_symbols=args.include_chord_symbols,
+        include_lyrics=args.include_lyrics,
+        verovio_cli_path=args.verovio_cli_path,
+    )
+
+    out_path = render_musicxml_to_file(
+        musicxml, args.output, config=cfg, prefer_pdf=args.pdf,
+    )
+    logger.info("Wrote: {} (backend={}, pdf={})", out_path, args.backend, args.pdf)
     return 0
 
 
@@ -239,9 +251,33 @@ def build_parser() -> argparse.ArgumentParser:
     p_run.set_defaults(func=cmd_run)
 
     # render
-    p_render = sub.add_parser("render", help="render MusicXML to SVG (v0.1: BSD inline)")
+    p_render = sub.add_parser(
+        "render",
+        help="render MusicXML to SVG (v0.1) or PDF (v0.2.4: verovio CLI / lilypond / musescore)",
+    )
     p_render.add_argument("--input", "-i", required=True, help="input MusicXML file")
-    p_render.add_argument("--output", "-o", required=True, help="output SVG file")
+    p_render.add_argument("--output", "-o", required=True, help="output file (auto .svg/.pdf)")
+    p_render.add_argument(
+        "--backend", choices=["verovio", "lilypond", "musescore"],
+        default="verovio", help="rendering backend (default: verovio)",
+    )
+    p_render.add_argument(
+        "--pdf", action="store_true",
+        help="(verovio backend only) render to PDF via verovio CLI",
+    )
+    p_render.add_argument(
+        "--page-size", choices=["A4", "Letter"], default="A4",
+    )
+    p_render.add_argument(
+        "--include-chord-symbols", action="store_true", default=True,
+    )
+    p_render.add_argument(
+        "--include-lyrics", action="store_true", default=False,
+    )
+    p_render.add_argument(
+        "--verovio-cli-path", default="verovio",
+        help="path to verovio CLI (for --pdf)",
+    )
     p_render.set_defaults(func=cmd_render)
 
     # separate

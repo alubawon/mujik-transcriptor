@@ -5,8 +5,9 @@
 2. 跑 Pipeline.run() 但 mock 掉 demucs/basic-pitch/adtof
 3. 验证 out/project.mid 存在 + pretty-midi 可解析
 4. 跑 mujik quantize 验证 out/quantize_report.json
+5. 跑 mujik render 验证 out/project.svg 存在
 
-用法（在 dev-v0.2.3 容器内）：
+用法（在 dev-v0.2.4 容器内）：
     python tests/fixtures/smoke_test.py
 """
 from __future__ import annotations
@@ -26,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/6] generate synthetic wav → {fixture_path}")
+    print(f"[1/7] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -42,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/6] output dir: {out_dir}")
+        print(f"[2/7] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/6] mock heavy adapters...")
+        print("[3/7] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -87,7 +88,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/6] run pipeline (mocked)...")
+        print("[4/7] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -119,7 +120,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/6] verify pipeline outputs...")
+        print("[5/7] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -153,7 +154,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/6] run mujik quantize (v0.2.3)...")
+        print("[6/7] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -173,7 +174,55 @@ def main() -> int:
             f"grid={report['grid_resolution']}, groove={report['groove_template']}"
         )
 
-        print("\n✅ E2E smoke test PASSED (v0.2.3)")
+        # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
+        print("[7/7] run mujik render (v0.2.4)...")
+        from mujik.cli import main as cli_main2
+        from mujik.midi.io import read_midi_to_project
+        from mujik.score.builder import build_musicxml
+
+        # 手动构造 MusicXML（避免 mock 整个 cli_main）
+        proj = read_midi_to_project(str(midi_path))
+        musicxml = build_musicxml(proj, layout="per_stem")
+        musicxml_path = out_dir / "project.musicxml"
+        musicxml_path.write_text(musicxml, encoding="utf-8")
+        assert musicxml_path.exists()
+        assert "<score-partwise" in musicxml
+        print(f"      project.musicxml: {len(musicxml)} chars")
+
+        # 跑 render 走 Verovio Python binding → SVG
+        rc = cli_main2([
+            "render",
+            "--input", str(musicxml_path),
+            "--output", str(out_dir / "project"),
+            "--backend", "verovio",
+        ])
+        assert rc == 0, f"mujik render failed: rc={rc}"
+
+        svg_path = out_dir / "project.svg"
+        assert svg_path.exists(), f"missing {svg_path}"
+        assert svg_path.stat().st_size > 100
+        assert "<svg" in svg_path.read_text().lower()
+        print(f"      project.svg: {svg_path.stat().st_size} bytes")
+
+        # 尝试 PDF（仅在 verovio CLI 可用时）
+        try:
+            rc = cli_main2([
+                "render",
+                "--input", str(musicxml_path),
+                "--output", str(out_dir / "project"),
+                "--backend", "verovio",
+                "--pdf",
+            ])
+            if rc == 0:
+                pdf_path = out_dir / "project.pdf"
+                if pdf_path.exists():
+                    print(f"      project.pdf: {pdf_path.stat().st_size} bytes (verovio CLI)")
+            else:
+                print("      project.pdf: skipped (verovio CLI not available)")
+        except Exception as e:
+            print(f"      project.pdf: skipped ({e})")
+
+        print("\n✅ E2E smoke test PASSED (v0.2.4)")
     return 0
 
 

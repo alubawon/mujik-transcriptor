@@ -124,6 +124,9 @@ class RenderConfig(BaseModel):
     page_size: Literal["A4", "Letter"] = "A4"
     staff_count: int = Field(default=2, ge=1, le=20)
     timeout_sec: int = Field(default=60, ge=1, le=600)
+    # v0.2.4: verovio CLI subprocess (PDF output)
+    verovio_cli_path: str = "verovio"
+    cli_timeout_sec: int = Field(default=60, ge=1, le=600)
 
 
 class PipelineConfig(BaseModel):
