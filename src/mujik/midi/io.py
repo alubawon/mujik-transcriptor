@@ -66,13 +66,66 @@ def _stem_to_instrument_name(stem: StemName) -> str:
     return f"mujik/{stem}"
 
 
+# v0.4.2: muscriptor 输出的标准 instrument name → stem 映射
+# muscriptor 写多轨 MIDI 时使用标准名称（Electric Guitar, Drum Kit 等），
+# 这里反查支持 muscriptor 输出（不破坏现有 mujik/<stem> 前缀匹配逻辑）
+_MUSCRIPTOR_NAME_TO_STEM: dict[str, StemName] = {
+    # Vocals
+    "vocals": "vocals",
+    "vocal": "vocals",
+    "voice": "vocals",
+    "singing": "vocals",
+    "lead vocal": "vocals",
+    "backing vocal": "vocals",
+    # Drums
+    "drum kit": "drums",
+    "drums": "drums",
+    "drum": "drums",
+    "percussion": "drums",
+    "drum set": "drums",
+    # Bass
+    "bass": "bass",
+    "electric bass": "bass",
+    "bass guitar": "bass",
+    "fretless bass": "bass",
+    "acoustic bass": "bass",
+    "synth bass": "bass",
+    # Piano
+    "piano": "piano",
+    "acoustic grand piano": "piano",
+    "electric piano": "piano",
+    "grand piano": "piano",
+    "keyboard": "piano",
+    # Guitar
+    "guitar": "guitar",
+    "electric guitar": "guitar",
+    "acoustic guitar": "guitar",
+    "classical guitar": "guitar",
+    "steel guitar": "guitar",
+    "nylon guitar": "guitar",
+    "clean guitar": "guitar",
+    "distorted guitar": "guitar",
+    # Other (catch-all)
+    "other": "other",
+}
+
+
 def _instrument_name_to_stem(name: str) -> StemName | None:
-    """从 pretty_midi instrument name 反查 stem。"""
-    if not name.startswith("mujik/"):
+    """从 pretty_midi instrument name 反查 stem。
+
+    v0.4.2 起支持 muscriptor 输出的标准 instrument name（如 "Electric Guitar"、
+    "Drum Kit"）。原有 `mujik/<stem>` 前缀匹配仍优先。
+    """
+    # 1. mujik 内部写出的 prefix 形式（最高优先级）
+    if name.startswith("mujik/"):
+        candidate = name[len("mujik/"):]
+        if candidate in _DEFAULT_PROGRAMS:
+            return candidate  # type: ignore[return-value]
         return None
-    candidate = name[len("mujik/"):]
-    if candidate in _DEFAULT_PROGRAMS:
-        return candidate  # type: ignore[return-value]
+    # 2. muscriptor 标准 instrument name（大小写不敏感）
+    lower = name.lower().strip()
+    if lower in _MUSCRIPTOR_NAME_TO_STEM:
+        return _MUSCRIPTOR_NAME_TO_STEM[lower]
     return None
 
 

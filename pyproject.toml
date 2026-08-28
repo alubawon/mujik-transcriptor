@@ -68,6 +68,12 @@ transcribe-tf = [
 transcribe-bytedance = [
   "piano_transcription_inference @ git+https://github.com/qiuqiangkong/piano_transcription_inference",
 ]
+# v0.4.2: muscriptor multitrack transcription
+# 代码 MIT, 模型权重 CC-BY-NC 4.0 (仅限非商业研究)
+# 通过 subprocess 调 `uvx muscriptor transcribe`，不直接 import 到主线
+transcribe-muscriptor = [
+  "muscriptor>=0.3",
+]
 preprocess-denoise = [
   "nnnoiseless>=0.1",
   "scipy>=1.10",

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -182,6 +183,80 @@ def cmd_quantize(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_multitrack(args: argparse.Namespace) -> int:
+    """v0.4.2: 用 muscriptor 一次性转写多乐器音频。
+
+    跳过 4/5/6-stem 源分离，直接 muscriptor 多乐器转录。
+    """
+    audio_path = Path(args.input)
+    if not audio_path.exists():
+        logger.error(f"input not found: {audio_path}")
+        return 1
+
+    from mujik.transcribe.muscriptor_adapter import (
+        MuscriptorAdapterError,
+        check_muscriptor_available,
+        transcribe_multitrack,
+    )
+
+    if not check_muscriptor_available():
+        logger.error(
+            "`uvx` not found. Install uv: https://docs.astral.sh/uv/getting-started/installation/"
+        )
+        return 2
+
+    out_dir = Path(args.output)
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    try:
+        project = transcribe_multitrack(
+            audio_path,
+            out_dir=out_dir,
+            model=args.model,
+            timeout_sec=args.timeout,
+        )
+    except MuscriptorAdapterError as e:
+        logger.error(f"muscriptor failed: {e}")
+        return 3
+    except subprocess.TimeoutExpired:
+        logger.error(f"muscriptor timeout after {args.timeout}s")
+        return 4
+    except Exception as e:
+        logger.error(f"unexpected error: {e}")
+        return 5
+
+    # 写 project.mid + project.json
+    from mujik.midi.io import write_project_to_midi
+    from mujik.time_signature.model import build_default_segments
+    from mujik.midi.model import TempoSegment
+    # 兜底：muscriptor 输出可能没 time_signatures
+    if not project.time_signatures:
+        project.time_signatures = build_default_segments(project.duration or 1.0)
+    if not project.tempo_map:
+        project.tempo_map = [TempoSegment(0.0, project.duration or 1.0, 120.0)]
+    project.metadata.update({
+        "mujik_version": "0.4.2",
+        "transcribe_mode": "multitrack",
+        "muscriptor_model": args.model,
+    })
+    write_project_to_midi(project, out_dir / "project.mid")
+    (out_dir / "project.json").write_text(
+        json.dumps({
+            "mujik_version": "0.4.2",
+            "transcribe_mode": "multitrack",
+            "muscriptor_model": args.model,
+            "tracks": list(project.tracks.keys()),
+            "total_notes": project.total_notes(),
+            "duration": project.duration,
+        }, ensure_ascii=False, indent=2)
+    )
+    logger.info(
+        f"multitrack done: {len(project.tracks)} tracks, "
+        f"{project.total_notes()} notes → {out_dir / 'project.mid'}"
+    )
+    return 0
+
+
 def cmd_time_signature_change(args: argparse.Namespace) -> int:
     """CLI: mujik time-signature change --project-dir DIR --at T --new SIG --mode {A,B}"""
     from mujik.time_signature.io import (
@@ -339,6 +414,23 @@ def build_parser() -> argparse.ArgumentParser:
         help="output directory (default: in-place overwrite)",
     )
     p_tsc.set_defaults(func=cmd_time_signature_change)
+
+    # multitrack (v0.4.2)
+    p_mt = sub.add_parser(
+        "multitrack",
+        help="transcribe multitrack audio via muscriptor (v0.4.2)",
+    )
+    p_mt.add_argument("--input", "-i", required=True, help="input audio file")
+    p_mt.add_argument("--output", "-o", required=True, help="output directory")
+    p_mt.add_argument(
+        "--model", choices=["small", "medium", "large"], default="medium",
+        help="muscriptor model size (small=CPU friendly, large=GPU recommended)",
+    )
+    p_mt.add_argument(
+        "--timeout", type=int, default=1800,
+        help="subprocess timeout in seconds (default 1800)",
+    )
+    p_mt.set_defaults(func=cmd_multitrack)
 
     return parser
 

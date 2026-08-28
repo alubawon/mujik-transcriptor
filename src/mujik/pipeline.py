@@ -151,7 +151,40 @@ class Pipeline:
             time_sigs = build_default_segments(duration if duration > 0 else 1.0)
             logger.info("pipeline[2.5/7]: rhythm skipped (disabled)")
 
-        # ---- 3. Demucs 4-stem 分离 ----
+        # ---- 3. 源分离 OR muscriptor multitrack 模式分支（v0.4.2）----
+        if cfg.transcribe.mode == "multitrack":
+            # v0.4.2 multitrack 模式：跳过源分离，直接 muscriptor 多乐器转录
+            from mujik.transcribe.muscriptor_adapter import transcribe_multitrack
+            project = transcribe_multitrack(
+                sep_input,
+                config=cfg.transcribe,
+                out_dir=out_dir / "muscriptor",
+                model=cfg.transcribe.muscriptor_model,
+            )
+            # muscriptor 输出的 audio_path 改回原始 audio_path（而非去噪后）
+            project.audio_path = str(audio_path)
+            project.duration = duration
+            project.sample_rate = sample_rate
+            project.time_signatures = time_sigs
+            project.tempo_map = [tempo]
+            project.metadata.update({
+                "mujik_version": "0.4.2",
+                "preset": cfg.preset,
+                "loudnorm_enabled": cfg.loudnorm.enabled,
+                "rhythm_enabled": cfg.rhythm.enabled,
+                "denoise_enabled": cfg.preprocess.denoise_enabled,
+                "denoise_backend": cfg.preprocess.denoise_backend,
+                "transcribe_mode": "multitrack",
+                "muscriptor_model": cfg.transcribe.muscriptor_model,
+                "score_features": ["bend", "harmony"],
+            })
+            logger.info(
+                "pipeline[3'/7]: muscriptor multitrack done, {n} tracks",
+                n=len(project.tracks),
+            )
+            return project
+
+        # ---- 3. Demucs 4-stem 分离（per_stem 模式）----
         stems_out_dir = out_dir / "stems"
         stems: Stems = separate_with_demucs(
             sep_input, stems_out_dir, config=cfg.source_separation,
@@ -169,13 +202,14 @@ class Pipeline:
             time_signatures=time_sigs,
             tempo_map=[tempo],
             metadata={
-                "mujik_version": "0.4.1",
+                "mujik_version": "0.4.2",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
                 "separator": stems.separation_model,
+                "transcribe_mode": "per_stem",
                 # v0.4.1 新增：score 渲染支持 bend/harmony
                 "score_features": ["bend", "harmony"],
             },

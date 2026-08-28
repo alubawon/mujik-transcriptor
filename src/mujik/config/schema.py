@@ -46,6 +46,14 @@ class PreprocessConfig(BaseModel):
 class TranscribeConfig(BaseModel):
     """转录配置：按 stem 路由到不同转录器。"""
 
+    # v0.4.2: 转录模式
+    # - per_stem (默认): 4/5/6-stem 源分离后按 stem 路由到不同 adapter
+    # - multitrack: 跳过源分离，直接 muscriptor 一次性多乐器转录
+    mode: Literal["per_stem", "multitrack"] = "per_stem"
+
+    # v0.4.2: muscriptor 模型尺寸（仅 multitrack 模式生效）
+    muscriptor_model: Literal["small", "medium", "large"] = "medium"
+
     vocals: str = "basic-pitch"
     bass: str = "basic-pitch"
     drums: str = "adtof"

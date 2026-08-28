@@ -41,12 +41,35 @@ WAV/FLAC/MP3
 | 渲染主线 | Verovio (BSD) | ✅ |
 | 渲染精细 | LilyPond (GPL 隔离) | 🧪 v0.3 |
 | 渲染快速 | MuseScore (GPL 隔离) | 🧪 v0.3 |
+| **多乐器转录（v0.4.2）** | **MuScriptor**（代码 MIT / 权重 CC-BY-NC 4.0）| ✅ |
+
+## 多乐器转录 (MuScriptor, v0.4.2)
+
+v0.4.2 起支持通过 [MuScriptor](https://github.com/muscriptor/muscriptor)（Kyutai + Mirelo）做多乐器一次性转录，作为 4/5/6-stem 分轨转录的替代方案。
+
+```bash
+# 安装 muscriptor extra
+pip install 'mujik-transcriptor[transcribe-muscriptor]'
+
+# 设置 HuggingFace token（muscriptor 权重 CC-BY-NC 4.0）
+# 1. 访问 https://huggingface.co/MuScriptor/muscriptor-{small,medium,large} 接受 license
+# 2. https://huggingface.co/settings/tokens 创建 token
+export HF_TOKEN=hf_xxx
+
+# 跑 multitrack 转录
+mujik multitrack --input song.wav --output out_dir/ --model small
+```
+
+详细文档：[docs/MUSCRIPTOR_INTEGRATION.md](docs/MUSCRIPTOR_INTEGRATION.md)
 
 ## 许可证
 
 主项目：**MIT**（参见 [LICENSE](LICENSE)）。
 
 GPL 子项目（`render-lilypond/`、`render-musescore/`）进程隔离，详见 [design.md §8](docs/design.md#8-依赖分层)。
+
+muscriptor 适配器（v0.4.2+）通过 **subprocess 隔离** 调 `uvx muscriptor`，主线不 import muscriptor 包。
+muscriptor 模型权重为 **CC BY-NC 4.0**（仅限非商业研究），项目本身已声明非商用前提。详见 [docs/MUSCRIPTOR_INTEGRATION.md#许可证声明](docs/MUSCRIPTOR_INTEGRATION.md#许可证声明)。
 
 ## 开发环境
 
