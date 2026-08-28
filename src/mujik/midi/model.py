@@ -4,6 +4,7 @@
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -21,6 +22,35 @@ StemName = Literal[
 VALID_STEM_NAMES: tuple[StemName, ...] = (
     "vocals", "drums", "bass", "other", "piano", "guitar",
 )
+
+
+# ---------- ChordEvent 验证（v0.4.6 hardening）----------
+
+# 合法 root 格式：单字母 A-G + 可选 #/b（大小写不敏感）
+_CHORD_ROOT_RE = re.compile(r"^[A-Ga-g][#b]?$")
+
+# 按 vocab 划分的合法 quality 集合
+# - "root": 只有根音，quality 必须空
+# - "root-quality": 根 + 大/小三和弦（""、maj、M、m、min、minor、-）
+# - "extended": 在 root-quality 之上加 7、maj7、m7、dim、aug、sus（v0.4.6 范围）
+# v0.4.6 决定：extended 不含 9/11/13/alt（留 v0.4.8 BTC-HCQT）
+ALLOWED_QUALITIES_BY_VOCAB: dict[str, frozenset[str]] = {
+    "root": frozenset({""}),
+    "root-quality": frozenset({
+        "", "maj", "major", "M",
+        "m", "min", "minor", "-",
+    }),
+    "extended": frozenset({
+        "", "maj", "major", "M",
+        "m", "min", "minor", "-",
+        "7", "dom", "dominant",
+        "maj7", "M7", "major7",
+        "m7", "min7", "minor7",
+        "dim", "diminished",
+        "aug", "augmented", "+",
+        "sus", "sus2", "sus4",
+    }),
+}
 
 
 @dataclass(frozen=True)
@@ -97,13 +127,58 @@ class TempoSegment:
 
 @dataclass
 class ChordEvent:
-    """和弦事件。"""
+    """和弦事件。
+
+    v0.4.6 hardening：在 __post_init__ 验证字段。
+    - root: 必须匹配 ^[A-Ga-g][#b]?$（如 "C", "F#", "Bb"）；空字符串拒绝
+    - bass: 同 root 规则，但可为空字符串（表示非 slash chord）
+    - quality: 由 vocab 决定允许集合（默认 extended）
+    - start/end: start < end 且 start >= 0
+    """
 
     start: float
     end: float
-    root: str  # e.g. "C", "F#", "Bb"
-    quality: str = ""  # e.g. "maj7", "m11"
-    bass: str = ""  # slash chord bass
+    root: str
+    quality: str = ""
+    bass: str = ""
+    vocab: str = "extended"  # "root" | "root-quality" | "extended"
+
+    def __post_init__(self) -> None:
+        # start/end 时间合法性
+        # - 允许 end == start（madmom adapter 内部 placeholder，下游 snap+defense 后 > 0）
+        # - 拒绝 end < start
+        if self.start < 0:
+            raise ValueError(
+                f"chord start must be >= 0, got {self.start} (root={self.root!r})"
+            )
+        if self.end < self.start:
+            raise ValueError(
+                f"chord end ({self.end}) must be >= start ({self.start}) "
+                f"(root={self.root!r})"
+            )
+        # root 格式
+        if not self.root or not _CHORD_ROOT_RE.match(self.root):
+            raise ValueError(
+                f"chord root must match [A-G][#b]? (case-insensitive), "
+                f"got {self.root!r}"
+            )
+        # bass 格式（空字符串允许）
+        if self.bass and not _CHORD_ROOT_RE.match(self.bass):
+            raise ValueError(
+                f"chord bass must match [A-G][#b]? or empty, got {self.bass!r}"
+            )
+        # quality vocab
+        allowed = ALLOWED_QUALITIES_BY_VOCAB.get(self.vocab)
+        if allowed is None:
+            raise ValueError(
+                f"unknown chord vocab {self.vocab!r}; "
+                f"expected one of {list(ALLOWED_QUALITIES_BY_VOCAB)}"
+            )
+        if self.quality not in allowed:
+            raise ValueError(
+                f"chord quality {self.quality!r} not in vocab {self.vocab!r} "
+                f"(allowed: {sorted(allowed)})"
+            )
 
 
 @dataclass
@@ -136,4 +211,5 @@ __all__ = [
     "Project",
     "StemName",
     "VALID_STEM_NAMES",
+    "ALLOWED_QUALITIES_BY_VOCAB",
 ]

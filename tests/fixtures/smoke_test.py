@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/12] generate synthetic wav → {fixture_path}")
+    print(f"[1/13] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/12] output dir: {out_dir}")
+        print(f"[2/13] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/12] mock heavy adapters...")
+        print("[3/13] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -89,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/12] run pipeline (mocked)...")
+        print("[4/13] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -121,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/12] verify pipeline outputs...")
+        print("[5/13] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -140,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -155,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/12] run mujik quantize (v0.2.3)...")
+        print("[6/13] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -176,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/12] run mujik render (v0.2.4)...")
+        print("[7/13] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -224,7 +224,7 @@ def main() -> int:
             print(f"      project.pdf: skipped ({e})")
 
         # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>；v0.4.3 验证：release 模式
-        print("[8/12] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
+        print("[8/13] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
         from mujik.config.schema import RenderConfig
         from mujik.midi.model import ChordEvent
 
@@ -287,7 +287,7 @@ def main() -> int:
         print(f"      v0.4.3 release curve: {n_bend_tags} <bend> siblings + <release/> marker")
 
         # 9. v0.4.2 验证：muscriptor multitrack adapter 配置 + 解析
-        print("[9/12] verify v0.4.2 muscriptor adapter...")
+        print("[9/13] verify v0.4.2 muscriptor adapter...")
         from mujik.config.schema import TranscribeConfig
         from mujik.transcribe.muscriptor_adapter import (
             MuscriptorAdapterError,
@@ -324,7 +324,7 @@ def main() -> int:
         print(f"      muscriptor adapter: {len(VALID_MUSCRIPTOR_MODELS)} valid models, subprocess-based")
 
         # 10. v0.4.3 验证：连续 bend 曲线渲染
-        print("[10/12] verify v0.4.3 continuous bend curve rendering...")
+        print("[10/13] verify v0.4.3 continuous bend curve rendering...")
         from mujik.score.bend import (
             BendPoint,
             build_bend_elements,
@@ -376,7 +376,7 @@ def main() -> int:
         print(f"      end-to-end MusicXML: shape=\"curved\" + bend+release ✓")
 
         # 11. v0.4.4 验证：自动和弦检测（madmom subprocess）
-        print("[11/12] verify v0.4.4 automatic chord detection...")
+        print("[11/13] verify v0.4.4 automatic chord detection...")
         from mujik.chord.madmom_adapter import (
             MADMOM_CHORD_TIMEOUT_DEFAULT,
             MadmomChordAdapterError,
@@ -455,7 +455,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> ✓")
 
         # 12. v0.4.5 验证：chord quantize 到 bar/beat
-        print("[12/12] verify v0.4.5 chord quantize to bar/beat...")
+        print("[12/13] verify v0.4.5 chord quantize to bar/beat...")
         from mujik.chord.quantize import (
             quantize_chord_track,
             snap_chord_to_grid,
@@ -542,7 +542,95 @@ def main() -> int:
         print(f"      filter_short_chords: 0.2s dropped, 1.5s kept ✓")
         print(f"      end-to-end: raw 100ms → quantized 0.5s beat grid ✓")
 
-        print("\n✅ E2E smoke test PASSED (v0.4.5)")
+        # 13. v0.4.6 验证：ChordEvent hardening 验证器
+        print("[13/13] verify v0.4.6 ChordEvent hardening validator...")
+        from mujik.midi.model import (
+            ALLOWED_QUALITIES_BY_VOCAB,
+        )
+
+        # 合法构造（root、quality、bass、vocab 各组合）
+        c_ok = ChordEventModel(0.0, 1.0, "C", "")
+        assert c_ok.root == "C"
+        c_full = ChordEventModel(0.0, 1.0, "F#", "m7", bass="A")
+        assert c_full.bass == "A"
+
+        # 拒绝非法 root
+        for bad_root in ("", "H", "C##", "Do", "C1"):
+            try:
+                ChordEventModel(0.0, 1.0, bad_root, "")
+                raise AssertionError(f"root {bad_root!r} should be rejected")
+            except ValueError as e:
+                assert "root must match" in str(e), f"got: {e}"
+        # 拒绝非法 bass
+        try:
+            ChordEventModel(0.0, 1.0, "C", "7", bass="H")
+            raise AssertionError("bass=H should be rejected")
+        except ValueError as e:
+            assert "bass must match" in str(e)
+        # 拒绝负 start / end<start
+        try:
+            ChordEventModel(-0.1, 1.0, "C", "")
+        except ValueError as e:
+            assert "start must be >= 0" in str(e)
+        try:
+            ChordEventModel(2.0, 1.0, "C", "")
+        except ValueError as e:
+            assert "end" in str(e)
+        # 允许 placeholder (end == start)
+        c_ph = ChordEventModel(0.0, 0.0, "C", "")
+        assert c_ph.end == c_ph.start
+
+        # quality vocab 三档
+        assert set(ALLOWED_QUALITIES_BY_VOCAB.keys()) == {
+            "root", "root-quality", "extended",
+        }
+        # root vocab 只接受 ""
+        assert "" in ALLOWED_QUALITIES_BY_VOCAB["root"]
+        # root-quality 含 maj/min
+        assert "maj" in ALLOWED_QUALITIES_BY_VOCAB["root-quality"]
+        assert "m" in ALLOWED_QUALITIES_BY_VOCAB["root-quality"]
+        # extended 含 7/maj7/m7/dim/aug/sus
+        for q in ("7", "maj7", "m7", "dim", "aug", "sus"):
+            assert q in ALLOWED_QUALITIES_BY_VOCAB["extended"], f"{q} not in extended"
+        # extended 拒绝 9/alt
+        try:
+            ChordEventModel(0.0, 1.0, "C", "9")
+        except ValueError as e:
+            assert "quality" in str(e)
+        try:
+            ChordEventModel(0.0, 1.0, "C", "alt")
+        except ValueError as e:
+            assert "quality" in str(e)
+
+        # root ⊂ root-quality ⊂ extended
+        assert ALLOWED_QUALITIES_BY_VOCAB["root"].issubset(
+            ALLOWED_QUALITIES_BY_VOCAB["root-quality"]
+        )
+        assert ALLOWED_QUALITIES_BY_VOCAB["root-quality"].issubset(
+            ALLOWED_QUALITIES_BY_VOCAB["extended"]
+        )
+
+        # 端到端：合法 chord → MusicXML <harmony> 仍然工作
+        proj_v46 = read_midi_to_project(str(midi_path))
+        proj_v46.chord_track = [
+            ChordEventModel(0.0, 1.0, "C", "maj7"),   # extended vocab
+            ChordEventModel(1.0, 2.0, "A", "m"),      # root-quality
+        ]
+        xml_v46 = build_musicxml(
+            proj_v46,
+            config=RenderConfig(include_chord_symbols=True),
+            layout="per_stem",
+        )
+        assert "<kind>major-seventh</kind>" in xml_v46  # QUALITY_TO_KIND maj7
+        assert "<kind>minor</kind>" in xml_v46
+
+        print(f"      root validation: H/##/empty/digit rejected ✓")
+        print(f"      bass validation: H rejected, empty allowed ✓")
+        print(f"      start/end: negative rejected, end==start placeholder allowed ✓")
+        print(f"      quality vocab: root/root-quality/extended (9/alt rejected) ✓")
+        print(f"      end-to-end: harded chord → MusicXML <kind> ✓")
+
+        print("\n✅ E2E smoke test PASSED (v0.4.6)")
     return 0
 
 

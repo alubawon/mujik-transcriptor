@@ -77,10 +77,21 @@ class TestBuildHarmonyElement:
         assert "<bass-alter>1</bass-alter>" in xml
 
     def test_unknown_quality_passes_through(self):
-        """爵士扩展（9/11/13/alt）透传字符串到 <kind>。"""
-        chord = ChordEvent(start=0.0, end=1.0, root="C", quality="9")
+        """v0.4.6: extended vocab 内未知 kind 字符串透传到 <kind>（Verovio 接受）。
+
+        v0.4.1 设计允许 9/11/13/alt 透传；v0.4.6 hardening 后，
+        必须先用合法 quality 构造 ChordEvent，再透传到 <kind>。
+        """
+        # "sus" 在 extended vocab 内
+        chord = ChordEvent(start=0.0, end=1.0, root="C", quality="sus")
         xml = build_harmony_element(chord)
-        assert "<kind>9</kind>" in xml
+        assert "<kind>sus</kind>" in xml
+
+    def test_9_quality_rejected_at_construction(self):
+        """v0.4.6: "9" 不在 extended vocab → ChordEvent 构造失败。"""
+        # 9/11/13/alt 留 v0.4.8 BTC-HCQT 评估后再开
+        with pytest.raises(ValueError, match="quality"):
+            ChordEvent(start=0.0, end=1.0, root="C", quality="9")
 
     def test_lowercase_root_normalized(self):
         chord = ChordEvent(start=0.0, end=1.0, root="c", quality="m")
@@ -88,10 +99,9 @@ class TestBuildHarmonyElement:
         assert "<root-step>C</root-step>" in xml
 
     def test_invalid_root_raises(self):
-        chord = ChordEvent(start=0.0, end=1.0, root="H", quality="")
-        # H 不是合法的 root（德式记号 B）
-        with pytest.raises(ValueError, match="invalid root"):
-            build_harmony_element(chord)
+        """v0.4.6: H 不是合法 root → 在 ChordEvent 构造时拒绝（不再等到 build_harmony_element）。"""
+        with pytest.raises(ValueError, match="root must match"):
+            ChordEvent(start=0.0, end=1.0, root="H", quality="")
 
 
 class TestFindChordAtTime:

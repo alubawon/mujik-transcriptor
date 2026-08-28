@@ -106,7 +106,9 @@ class TestSnapToGrid:
 
     def test_snap_clamps_to_segment_start(self):
         """v0.4.5: t < segment.start → clamp 到 start。"""
-        c = ChordEvent(start=-0.5, end=0.3, root="C", quality="")
+        # v0.4.6: start < 0 在 ChordEvent 构造时拒绝；用 object.__setattr__ 绕过验证
+        c = ChordEvent(start=0.0, end=0.3, root="C", quality="")
+        object.__setattr__(c, "start", -0.5)
         out = snap_chord_to_grid(
             c, _sig4_4_at_120(), bpm=120.0, grid_per_bar=4, duration=10.0,
         )
