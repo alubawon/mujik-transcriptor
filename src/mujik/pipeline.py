@@ -169,13 +169,15 @@ class Pipeline:
             time_signatures=time_sigs,
             tempo_map=[tempo],
             metadata={
-                "mujik_version": "0.4.0",
+                "mujik_version": "0.4.1",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
                 "separator": stems.separation_model,
+                # v0.4.1 新增：score 渲染支持 bend/harmony
+                "score_features": ["bend", "harmony"],
             },
         )
 

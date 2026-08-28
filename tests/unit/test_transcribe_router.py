@@ -68,7 +68,7 @@ class TestRouting:
                 transcribe_stem(stem)
 
     def test_guitar_not_implemented(self):
-        """v0.4.0: guitar 仍未实现，留 v0.4.1。"""
+        """v0.4.1: guitar 仍未实现（Apollo 仓库未公开），留 v0.5+。"""
         stem = _make_stem("guitar")
         with pytest.raises(RouterError, match="guitar"):
             transcribe_stem(stem)

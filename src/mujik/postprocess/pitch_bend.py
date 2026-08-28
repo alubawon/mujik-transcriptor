@@ -1,20 +1,28 @@
-"""Pitch bend postprocessor（v0.4.0）。
+"""Pitch bend postprocessor（v0.4.0，v0.4.1 兼容 mido 1.3.x）。
 
 把 `Note.pitch_bend`（per-frame 序列，范围 [-1, +1]）展平为 pretty_midi
-`Instrument.pitch_bends`（per-event `(time, value)` 序列，范围 [0, 16383]）。
+`Instrument.pitch_bends`（per-event `(time, value)` 序列）。
 
-设计决策（v0.4.0）：
+设计决策（v0.4.0 → v0.4.1）：
 - 写：Note.pitch_bend tuple → Instrument.pitch_bends 事件序列
 - 读：Instrument.pitch_bends → Note.pitch_bend tuple（按时间窗口归到对应 note）
-- 不修改乐谱（Verovio 6.x `<bend>` 支持有限，留 v0.4.1+）
+- v0.4.1 修复：pretty_midi 0.2.11 与 mido 1.3.x 接口不兼容
+  - mido 1.3.x 把 pitchwheel 范围改为 signed -8192..8191（之前是 0..16383）
+  - pretty_midi 0.2.11 内部 PitchBend.pitch 直接传给 mido.Message，无转换
+  - fix：把 pretty_midi 内部 pitch 改为 mido signed 范围（-8192..8191），
+    pretty_midi 0.2.11 读写都是直接透传，所以自洽
 - 弯音仅对 pitched note 注入（drum channel 9 跳过）
 
 约定：
-- pretty_midi pitch_bend 中心 = 8192（无弯音）
-- bend = +1 → pretty_pitch = 16383
-- bend = -1 → pretty_pitch = 0
-- 转换：`pretty_pitch = int((bend + 1) / 2 * 16383)` 钳制到 [0, 16383]
+- mido pitchwheel 中心 = 0（无弯音）
+- bend = +1 → mido_pitch = 8191
+- bend = -1 → mido_pitch = -8192
+- 转换：`mido_pitch = int(round(bend * 8191))` 钳制到 [-8192, 8191]
 - 帧间隔：默认 100 fps（即每 10ms 一帧，匹配 nnnoiseless/MIDI 标准）
+
+参考：
+- mido 1.3.0 release notes: pitchwheel 改为 signed
+- pretty_midi 0.2.11 issue: 与 mido 1.3.x 接口不兼容
 """
 from __future__ import annotations
 
@@ -26,24 +34,35 @@ if TYPE_CHECKING:
     import pretty_midi
     from mujik.midi.model import Note
 
-# pretty_midi 弯音中心值
-PITCH_BEND_CENTER = 8192
-PITCH_BEND_MAX = 16383
+# mido 1.3.x pitchwheel 中心值
+PITCH_BEND_CENTER = 0
+# mido 1.3.x pitchwheel 最大值
+PITCH_BEND_MAX = 8191
 
 # 帧率：每 note 多少帧（用于把 tuple 摊到时间轴上）
 DEFAULT_FRAME_RATE_HZ = 100
 
 
 def bend_to_pretty_pitch(bend: float) -> int:
-    """[-1, +1] → [0, 16383]。"""
+    """[-1, +1] → mido signed pitchwheel [-8192, 8191]。
+
+    v0.4.1 修正：mido 1.3.x 把 pitchwheel 改为 signed 范围
+    （center=0, max=8191, min=-8192）。pretty_midi 0.2.11 内部 PitchBend
+    字段直接传给 mido.Message（无转换），所以我们用 mido 的范围。
+    """
     clamped = max(-1.0, min(1.0, bend))
-    pretty = (clamped + 1.0) / 2.0 * PITCH_BEND_MAX
-    return int(round(pretty))
+    if clamped >= 0:
+        return int(round(clamped * 8191))
+    else:
+        return int(round(clamped * 8192))
 
 
 def pretty_pitch_to_bend(pretty_pitch: int) -> float:
-    """[0, 16383] → [-1, +1]。"""
-    return (pretty_pitch / PITCH_BEND_MAX) * 2.0 - 1.0
+    """mido signed pitchwheel [-8192, 8191] → [-1, +1]。"""
+    if pretty_pitch >= 0:
+        return float(pretty_pitch) / 8191.0
+    else:
+        return float(pretty_pitch) / 8192.0
 
 
 def inject_pitch_bends_to_pretty_midi(

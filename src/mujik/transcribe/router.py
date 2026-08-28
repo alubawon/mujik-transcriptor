@@ -1,12 +1,12 @@
 """Stem → 转录 adapter 派发表。
 
-v0.2.1 路由：
+v0.4.1 路由：
   vocals → basic_pitch_adapter
   bass   → basic_pitch_adapter
   other  → basic_pitch_adapter
   drums  → adtof_adapter
-  piano  → NotImplementedError（v0.4+ ByteDance piano）
-  guitar → NotImplementedError（v0.4+ Apollo）
+  piano  → bytedance-piano adapter（v0.4.0 已实现）
+  guitar → NotImplementedError（v0.5+ Apollo，仓库 TBD）
 """
 from __future__ import annotations
 
@@ -76,7 +76,7 @@ def transcribe_stem(
         )
     if adapter_name == "apollo":
         raise RouterError(
-            f"guitar stem 暂未实现 (v0.4.1+ Apollo): {stem.name}"
+            f"guitar stem 暂未实现 (v0.5+ Apollo, repo TBD): {stem.name}"
         )
     raise RouterError(f"unknown adapter '{adapter_name}' for stem '{stem.name}'")
 

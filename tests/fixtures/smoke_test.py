@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/7] generate synthetic wav → {fixture_path}")
+    print(f"[1/8] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/7] output dir: {out_dir}")
+        print(f"[2/8] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/7] mock heavy adapters...")
+        print("[3/8] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -74,8 +74,9 @@ def main() -> int:
         def fake_transcribe(stem, config=None, out_dir=None):
             from mujik.midi.model import Note
             if stem.name == "vocals":
+                # v0.4.1: 加 pitch_bend 让 MusicXML 渲染 <bend> 元素
                 return [
-                    Note(0.0, 0.5, 60, 100),
+                    Note(0.0, 0.5, 60, 100, pitch_bend=(0.0, 0.4, 0.5, 0.4, 0.0)),
                     Note(0.5, 1.0, 62, 90),
                 ]
             if stem.name == "drums":
@@ -88,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/7] run pipeline (mocked)...")
+        print("[4/8] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -120,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/7] verify pipeline outputs...")
+        print("[5/8] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -139,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -154,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/7] run mujik quantize (v0.2.3)...")
+        print("[6/8] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -175,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/7] run mujik render (v0.2.4)...")
+        print("[7/8] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -222,7 +223,56 @@ def main() -> int:
         except Exception as e:
             print(f"      project.pdf: skipped ({e})")
 
-        print("\n✅ E2E smoke test PASSED (v0.2.4)")
+        # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>
+        print("[8/8] verify v0.4.1 <bend> + <harmony> rendering...")
+        from mujik.config.schema import RenderConfig
+        from mujik.midi.model import ChordEvent
+
+        # 注入 chord_track（含 C maj7 在第 1 measure 起始处 + F maj7 在第 2 measure）
+        proj2 = read_midi_to_project(str(midi_path))
+        proj2.chord_track = [
+            ChordEvent(start=0.0, end=2.0, root="C", quality="maj7"),
+            ChordEvent(start=2.0, end=4.0, root="F", quality="maj7"),
+        ]
+        # 重新 build MusicXML（include_chord_symbols=True 触发 <harmony>）
+        musicxml_v041 = build_musicxml(
+            proj2,
+            config=RenderConfig(include_chord_symbols=True),
+            layout="per_stem",
+        )
+        musicxml_v041_path = out_dir / "project_v041.musicxml"
+        musicxml_v041_path.write_text(musicxml_v041, encoding="utf-8")
+
+        # 验证 <bend> 元素（vocals 第一个 note 有 pitch_bend）
+        assert "<bend" in musicxml_v041, "expected <bend> element in MusicXML"
+        assert "<bend-alter>1</bend-alter>" in musicxml_v041, (
+            f"expected <bend-alter>1</bend-alter> (0.5 * 2 = 1), got: {musicxml_v041[:500]}"
+        )
+
+        # 验证 <harmony> 元素
+        assert "<harmony>" in musicxml_v041, "expected <harmony> in MusicXML"
+        assert "<root-step>C</root-step>" in musicxml_v041
+        assert "<kind>major-seventh</kind>" in musicxml_v041
+        # F maj7（kind=major-seventh 也应该出现）
+        assert musicxml_v041.count("<kind>major-seventh</kind>") >= 2
+
+        # 验证向后兼容：include_chord_symbols=False 时不应有 <harmony>
+        proj3 = read_midi_to_project(str(midi_path))
+        proj3.chord_track = [
+            ChordEvent(start=0.0, end=2.0, root="C", quality=""),
+        ]
+        musicxml_noharm = build_musicxml(
+            proj3,
+            config=RenderConfig(include_chord_symbols=False),
+            layout="per_stem",
+        )
+        assert "<harmony>" not in musicxml_noharm, (
+            "include_chord_symbols=False should skip <harmony>"
+        )
+
+        print(f"      project_v041.musicxml: {len(musicxml_v041)} chars, contains <bend> + <harmony>")
+
+        print("\n✅ E2E smoke test PASSED (v0.4.1)")
     return 0
 
 
