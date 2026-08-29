@@ -113,9 +113,9 @@ dev = [
 ]
 
 [project.urls]
-"Homepage" = "https://github.com/your-org/mujik-transcriptor"
-"Documentation" = "https://github.com/your-org/mujik-transcriptor/tree/main/docs"
-"Bug Tracker" = "https://github.com/your-org/mujik-transcriptor/issues"
+"Homepage" = "https://github.com/alubawon/mujik-transcriptor"
+"Documentation" = "https://github.com/alubawon/mujik-transcriptor/tree/main/docs"
+"Bug Tracker" = "https://github.com/alubawon/mujik-transcriptor/issues"
 
 [project.scripts]
 mujik = "mujik.cli:main"
