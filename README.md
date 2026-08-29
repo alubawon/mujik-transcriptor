@@ -39,20 +39,25 @@ ls out/
 
 > GPU 加速：把 `--device cuda` 加到 docker run（需 NVIDIA Container Toolkit）。
 
-## 🪄 一键 demo（需要真实音频）
+## 🪄 一键 demo
+
+仓库自带 `buhee/buhee.mp3` 作为默认 demo 音频；也可传入自己的。
 
 ```bash
-# 跑 pop/jazz/metal 三 preset 对比 → demo_out/{pop,jazz,metal}/ + demo_report.md
-./scripts/run_demo.sh path/to/your_song.wav
+# 用默认 buhee/buhee.mp3 跑 pop/jazz/metal 三 preset 对比
+./scripts/run_demo.sh
 
-# 可选：自定义裁剪时长（需要 ffmpeg）
-./scripts/run_demo.sh path/to/your_song.wav 30
+# 用自己的 wav
+./scripts/run_demo.sh ~/Music/my_song.wav
+
+# 只跑前 30 秒（需要 ffmpeg）
+./scripts/run_demo.sh ~/Music/my_song.wav 30
+
+# 把 buhee.mp3 换成别的 demo 音频
+cp my_demo.mp3 buhee/buhee.mp3 && ./scripts/run_demo.sh
 ```
 
-> **必须提供真实 wav**（pop/jazz/metal 三个 preset 差异只在真实音乐上才可见；
-> 跑合成正弦波对所有 preset 输出一致，没有 demo 价值）。支持 `.wav` / `.flac` / `.mp3` / `.ogg` / `.m4a`。
->
-> 不接受任何默认值：脚本会显式报错并打印用法。
+每次跑出 `demo_out/{pop,jazz,metal}/{project.mid, score.pdf, chords.json, ...}` + `demo_out/demo_report.md`。
 ```
 
 输出 `out/pop/`, `out/jazz/`, `out/metal/`，每个含 MIDI + PDF + JSON 报告。

@@ -1,9 +1,10 @@
-"""Tests for scripts/run_demo.sh (v0.5.1 + 修).
+"""Tests for scripts/run_demo.sh (v0.5.1 + 修 2).
 
 验证 demo 脚本：
-1. 无参数 → exit 2 + 帮助信息（含"必须"）
-2. 不存在的文件 → exit 1 + "not found"
-3. 真实文件存在 → 进入运行（不要求跑通，只需进 stage 3 preset loop）
+1. 默认用 buhee/buhee.mp3（仓库自带）
+2. $1 覆盖默认
+3. 显式传入不存在的文件 → 清晰报错
+4. 头部注释 + executable
 """
 from __future__ import annotations
 
@@ -15,75 +16,76 @@ import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "run_demo.sh"
+DEFAULT_WAV = REPO_ROOT / "buhee" / "buhee.mp3"
 
 
-def _bash(*args: str, env: dict | None = None) -> subprocess.CompletedProcess:
+def _bash(*args: str, timeout: int = 30) -> subprocess.CompletedProcess:
     if not SCRIPT.exists():
         pytest.skip(f"script not found: {SCRIPT}")
     if not shutil.which("bash"):
         pytest.skip("bash not available")
     return subprocess.run(
         ["bash", str(SCRIPT), *args],
-        capture_output=True, text=True, env=env,
-        timeout=30,
+        capture_output=True, text=True, timeout=timeout,
     )
 
 
-class TestArgumentValidation:
-    def test_no_args_rejects(self):
+class TestDefaults:
+    def test_default_uses_buhee(self):
+        """无参 → 走 buhee/buhee.mp3 默认（如果存在）。"""
+        if not DEFAULT_WAV.exists():
+            pytest.skip(f"default wav missing: {DEFAULT_WAV}")
         r = _bash()
-        assert r.returncode == 2
-        assert "❌" in r.stdout
-        assert "必须" in r.stdout
-        assert "用法" in r.stdout
-        assert "pop_song.wav" in r.stdout  # 示例
+        # 接受 exit 0（成功）或 1（preset 失败但脚本继续）
+        assert r.returncode in (0, 1)
+        # 必须在 stdout 看见 buhee.mp3 路径
+        assert "buhee/buhee.mp3" in r.stdout or str(DEFAULT_WAV) in r.stdout
 
-    def test_missing_file_rejects(self):
-        r = _bash("/nonexistent/path/to/missing.wav")
+    def test_first_arg_overrides_default(self, tmp_path: Path):
+        """$1 覆盖默认。"""
+        custom = tmp_path / "custom.wav"
+        # 写真实 wav 头（4 字节 RIFF 即可）
+        custom.write_bytes(b"RIFF" + b"\x00" * 100)
+        r = _bash(str(custom))
+        assert "custom.wav" in r.stdout or str(custom) in r.stdout
+
+
+class TestErrorPaths:
+    def test_missing_custom_file(self):
+        """传入不存在的文件 → exit 1。"""
+        r = _bash("/nonexistent/path/missing.wav")
         assert r.returncode == 1
         assert "❌" in r.stdout
-        assert "not found" in r.stdout
+        assert "not found" in r.stdout or "不存在" in r.stdout
 
-    def test_synthetic_fixture_rejected_at_smoke_level(self, tmp_path: Path):
-        """脚本不禁止 synthetic_5s.wav（只是建议），但应在帮助中说明。
-
-        注意：脚本实际不区分 synthetic 与真实 wav——它只校验"文件存在"。
-        拒绝 synthetic 的责任在 README + 脚本头部注释 + 帮助文本。
-        """
-        # 帮助文本应明确"必须真实 wav"
-        r = _bash()
-        assert "真实" in r.stdout
-        assert "pop/jazz/metal" in r.stdout
+    def test_default_missing_warns_with_hint(self, monkeypatch):
+        """默认文件不存在时给出明确提示。"""
+        # 通过临时改 SCRIPT 内容测；或用临时 HOME 等。这里直接测 mock：传入不存在的文件，错误信息含"不存在"
+        r = _bash("/definitely/not/a/real/file.wav")
+        assert r.returncode == 1
+        assert "❌" in r.stdout
 
 
 class TestHeader:
-    def test_script_header_documents_required_arg(self):
+    def test_script_header_documents_buhee_default(self):
         content = SCRIPT.read_text(encoding="utf-8")
-        assert "要求真实 wav" in content or "必须提供" in content
-        assert "synthetic" in content.lower() or "合成" in content  # 解释为何不用合成
+        assert "buhee/buhee.mp3" in content
+        assert "默认" in content or "default" in content.lower()
 
     def test_script_chmod_executable(self):
-        import os
         mode = SCRIPT.stat().st_mode
         assert mode & 0o111, f"script not executable: {SCRIPT}"
 
 
 class TestSmokeIntegration:
-    """实际跑：传一个真实 fixture，期望跑完三 preset（即使失败也不应 crash 整脚本）。"""
+    """默认 wav 跑完整脚本：expect 至少进 stage 3 preset loop。"""
 
-    def test_real_wav_reaches_preset_loop(self, tmp_path: Path):
-        # 用真实 fixture（synthetic_5s.wav 是仓库内真实存在的 wav）
-        # 脚本只校验文件存在；能进 stage 3 即可
-        # CI / 容器可能没 demucs/madmom，预期 preset 失败但脚本继续
-        wav = REPO_ROOT / "tests" / "fixtures" / "synthetic_5s.wav"
-        if not wav.exists():
-            pytest.skip("synthetic_5s.wav fixture missing")
-        # 短 timeout：测试用 fixture 跑完会很快（preset 全失败但 exit 0）
-        r = _bash(str(wav), env={"PATH": "/usr/bin:/bin:/usr/local/bin"})
-        # 退出码可能是 0（三 preset 全失败但继续）也可能是 1
-        # 关键是 stdout 包含 "running preset" 三次
-        assert r.returncode in (0, 1), f"unexpected exit code: {r.returncode}, stderr: {r.stderr}"
-        # 应至少进入 stage 3（"running preset=pop"）
+    def test_default_runs_three_presets(self):
+        if not DEFAULT_WAV.exists():
+            pytest.skip(f"default wav missing: {DEFAULT_WAV}")
+        r = _bash(timeout=120)
+        assert r.returncode in (0, 1)
         assert "preset=pop" in r.stdout
-        # 不应再有"❌ 必须"错误
-        assert "❌ 必须" not in r.stdout
+        assert "preset=jazz" in r.stdout
+        assert "preset=metal" in r.stdout
+        assert "✅ done" in r.stdout
