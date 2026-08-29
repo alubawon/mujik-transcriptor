@@ -25,11 +25,11 @@
 
 ```bash
 # 1. 拉镜像（包含 demucs / madmom / verovio 全部预装）
-docker pull ghcr.io/your-org/mujik-transcriptor:dev-v0.5.0
+docker pull ghcr.io/alubawon/mujik-transcriptor:dev-v0.5.1
 
 # 2. 跑 demo（输入你手头的 wav，30s 内出 MIDI + PDF）
 docker run --rm -v $(pwd):/work -w /work \
-  ghcr.io/your-org/mujik-transcriptor:dev-v0.5.0 \
+  ghcr.io/alubawon/mujik-transcriptor:dev-v0.5.1 \
   mujik run --input song.wav --output out/ --preset pop
 
 # 3. 看产物
@@ -39,14 +39,20 @@ ls out/
 
 > GPU 加速：把 `--device cuda` 加到 docker run（需 NVIDIA Container Toolkit）。
 
-## 🪄 一键 demo（无 wav 也能跑）
+## 🪄 一键 demo（需要真实音频）
 
 ```bash
-# 复用仓库自带的 5 秒合成 wav，跑 pop/jazz/metal 三 preset 对比
-make demo
+# 跑 pop/jazz/metal 三 preset 对比 → demo_out/{pop,jazz,metal}/ + demo_report.md
+./scripts/run_demo.sh path/to/your_song.wav
 
-# 或用脚本
-./scripts/run_demo.sh
+# 可选：自定义裁剪时长（需要 ffmpeg）
+./scripts/run_demo.sh path/to/your_song.wav 30
+```
+
+> **必须提供真实 wav**（pop/jazz/metal 三个 preset 差异只在真实音乐上才可见；
+> 跑合成正弦波对所有 preset 输出一致，没有 demo 价值）。支持 `.wav` / `.flac` / `.mp3` / `.ogg` / `.m4a`。
+>
+> 不接受任何默认值：脚本会显式报错并打印用法。
 ```
 
 输出 `out/pop/`, `out/jazz/`, `out/metal/`，每个含 MIDI + PDF + JSON 报告。
@@ -205,8 +211,8 @@ pytest tests/ -q
 # 跑最小管线（首次会下载模型权重到 ~/.cache/huggingface/）
 mujik run --input song.wav --output out/ --config config/default.yaml
 
-# 跑一键 demo
-./scripts/run_demo.sh
+# 跑一键 demo（需要真实 wav）
+./scripts/run_demo.sh path/to/your_song.wav
 ```
 
 ## 仓库结构

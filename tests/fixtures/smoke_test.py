@@ -1116,6 +1116,23 @@ def main() -> int:
         assert PIPELINE_TOTAL_STEPS_MULTITRACK > 0
         print(f"      pipeline constants: per_stem={PIPELINE_TOTAL_STEPS_PERSTEM} multitrack={PIPELINE_TOTAL_STEPS_MULTITRACK} ✓")
 
+        # 18.5 demo 脚本必须拒绝无参（v0.5.1 修：不再用合成 wav 默认）
+        r = subprocess.run(
+            ["bash", str(repo_root / "scripts" / "run_demo.sh")],
+            capture_output=True, text=True, timeout=10,
+        )
+        assert r.returncode == 2, f"无参应 exit 2，实际 {r.returncode}"
+        assert "必须" in r.stdout
+        assert "真实" in r.stdout
+        print("      demo script: rejects no-args with helpful message ✓")
+
+        # 18.6 ghcr URL 必须是真实 org（v0.5.1 修：your-org → alubawon）
+        readme_text = readme
+        assert "alubawon" in readme_text, "README 必须含 alubawon"
+        assert "your-org" not in readme_text, "README 不应再有占位 your-org"
+        assert "dev-v0.5.1" in readme_text, "README 应引用 dev-v0.5.1 tag"
+        print("      README: ghcr 真实 org (alubawon) + v0.5.1 tag ✓")
+
         print("\n✅ E2E smoke test PASSED (v0.5.1)")
     return 0
 
