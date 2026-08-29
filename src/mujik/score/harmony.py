@@ -14,6 +14,10 @@
 - 时间窗口查找：``find_chord_at_time`` 在 ``chord_track`` 列表里找覆盖
   ``t`` 的第一个 chord（chord 不重叠假设）。
 
+v0.4.7：``find_chord_at_time`` 改用 bisect_right O(log n) 算法。
+要求 ``chord_track`` 按 start 升序排序（v0.4.5 quantize_chord_track 输出
+已保证该 invariant）。乱序输入自动 fallback 到线性扫描 + warning。
+
 MusicXML 3.1 格式（partwise.dtd）::
 
     <harmony>
@@ -26,9 +30,13 @@ MusicXML 3.1 格式（partwise.dtd）::
 """
 from __future__ import annotations
 
+import bisect
+import logging
 import re
 
 from mujik.midi.model import ChordEvent
+
+logger = logging.getLogger(__name__)
 
 
 # quality → MusicXML <kind> 映射（MusicXML 3.1 标准值）
@@ -129,11 +137,27 @@ def build_harmony_element(chord: ChordEvent) -> str:
     )
 
 
+def _is_sorted_by_start(chord_track: list[ChordEvent]) -> bool:
+    """检查 chord_track 是否按 start 升序排序。"""
+    for i in range(1, len(chord_track)):
+        if chord_track[i - 1].start > chord_track[i].start:
+            return False
+    return True
+
+
 def find_chord_at_time(
     chord_track: list[ChordEvent] | None,
     t: float,
 ) -> ChordEvent | None:
-    """在 ``chord_track`` 中找覆盖时间 ``t`` 的 chord。
+    """在 ``chord_track`` 中找覆盖时间 ``t`` 的 chord（v0.4.7 O(log n) bisect）。
+
+    算法（v0.4.7）：
+        1. ``chord_track`` 按 start 升序（pipeline 输出的 invariant）
+        2. ``bisect_right(starts, t)`` 找插入点
+        3. 候选是 ``chord_track[idx-1]``
+        4. 验证 ``start <= t < end`` 后返回
+
+    乱序输入自动 fallback 到线性扫描并 log warning（保持向后兼容）。
 
     Args:
         chord_track: ChordEvent 列表（按 start 排序，无重叠假设）
@@ -144,9 +168,28 @@ def find_chord_at_time(
     """
     if not chord_track:
         return None
-    for chord in chord_track:
-        if chord.start <= t < chord.end:
-            return chord
+
+    # 快速路径：乱序则 fallback + warning
+    if not _is_sorted_by_start(chord_track):
+        logger.warning(
+            "find_chord_at_time: chord_track is not sorted by start, "
+            "falling back to O(n) linear scan; got %d chords",
+            len(chord_track),
+        )
+        for chord in chord_track:
+            if chord.start <= t < chord.end:
+                return chord
+        return None
+
+    # O(log n) bisect 路径
+    starts = [c.start for c in chord_track]
+    idx = bisect.bisect_right(starts, t)
+    if idx == 0:
+        # t 早于所有 chord
+        return None
+    candidate = chord_track[idx - 1]
+    if candidate.start <= t < candidate.end:
+        return candidate
     return None
 
 

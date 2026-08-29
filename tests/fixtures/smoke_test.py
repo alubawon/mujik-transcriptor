@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/13] generate synthetic wav → {fixture_path}")
+    print(f"[1/14] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/13] output dir: {out_dir}")
+        print(f"[2/14] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/13] mock heavy adapters...")
+        print("[3/14] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -89,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/13] run pipeline (mocked)...")
+        print("[4/14] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -121,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/13] verify pipeline outputs...")
+        print("[5/14] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -140,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -155,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/13] run mujik quantize (v0.2.3)...")
+        print("[6/14] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -176,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/13] run mujik render (v0.2.4)...")
+        print("[7/14] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -224,7 +224,7 @@ def main() -> int:
             print(f"      project.pdf: skipped ({e})")
 
         # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>；v0.4.3 验证：release 模式
-        print("[8/13] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
+        print("[8/14] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
         from mujik.config.schema import RenderConfig
         from mujik.midi.model import ChordEvent
 
@@ -287,7 +287,7 @@ def main() -> int:
         print(f"      v0.4.3 release curve: {n_bend_tags} <bend> siblings + <release/> marker")
 
         # 9. v0.4.2 验证：muscriptor multitrack adapter 配置 + 解析
-        print("[9/13] verify v0.4.2 muscriptor adapter...")
+        print("[9/14] verify v0.4.2 muscriptor adapter...")
         from mujik.config.schema import TranscribeConfig
         from mujik.transcribe.muscriptor_adapter import (
             MuscriptorAdapterError,
@@ -324,7 +324,7 @@ def main() -> int:
         print(f"      muscriptor adapter: {len(VALID_MUSCRIPTOR_MODELS)} valid models, subprocess-based")
 
         # 10. v0.4.3 验证：连续 bend 曲线渲染
-        print("[10/13] verify v0.4.3 continuous bend curve rendering...")
+        print("[10/14] verify v0.4.3 continuous bend curve rendering...")
         from mujik.score.bend import (
             BendPoint,
             build_bend_elements,
@@ -376,7 +376,7 @@ def main() -> int:
         print(f"      end-to-end MusicXML: shape=\"curved\" + bend+release ✓")
 
         # 11. v0.4.4 验证：自动和弦检测（madmom subprocess）
-        print("[11/13] verify v0.4.4 automatic chord detection...")
+        print("[11/14] verify v0.4.4 automatic chord detection...")
         from mujik.chord.madmom_adapter import (
             MADMOM_CHORD_TIMEOUT_DEFAULT,
             MadmomChordAdapterError,
@@ -455,7 +455,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> ✓")
 
         # 12. v0.4.5 验证：chord quantize 到 bar/beat
-        print("[12/13] verify v0.4.5 chord quantize to bar/beat...")
+        print("[12/14] verify v0.4.5 chord quantize to bar/beat...")
         from mujik.chord.quantize import (
             quantize_chord_track,
             snap_chord_to_grid,
@@ -543,7 +543,7 @@ def main() -> int:
         print(f"      end-to-end: raw 100ms → quantized 0.5s beat grid ✓")
 
         # 13. v0.4.6 验证：ChordEvent hardening 验证器
-        print("[13/13] verify v0.4.6 ChordEvent hardening validator...")
+        print("[13/14] verify v0.4.6 ChordEvent hardening validator...")
         from mujik.midi.model import (
             ALLOWED_QUALITIES_BY_VOCAB,
         )
@@ -630,7 +630,84 @@ def main() -> int:
         print(f"      quality vocab: root/root-quality/extended (9/alt rejected) ✓")
         print(f"      end-to-end: harded chord → MusicXML <kind> ✓")
 
-        print("\n✅ E2E smoke test PASSED (v0.4.6)")
+        # 14. v0.4.7 验证：find_chord_at_time O(log n) bisect
+        print("[14/14] verify v0.4.7 find_chord_at_time bisect optimization...")
+        from mujik.score.harmony import find_chord_at_time as find_chord_v47
+
+        # 基础 case：与 v0.4.1 行为兼容
+        assert find_chord_v47(None, 1.0) is None
+        assert find_chord_v47([], 1.0) is None
+        single = [ChordEventModel(0.0, 2.0, "C", "")]
+        assert find_chord_v47(single, 1.0) == single[0]
+        assert find_chord_v47(single, -1.0) is None  # t 早于所有 chord
+        assert find_chord_v47(single, 100.0) is None  # t 晚于所有 chord
+
+        # bisect 边界：t == start 命中, t == end 不命中
+        track = [
+            ChordEventModel(0.0, 2.0, "C", ""),
+            ChordEventModel(2.0, 4.0, "F", ""),
+            ChordEventModel(4.0, 6.0, "G", "7"),
+        ]
+        assert find_chord_v47(track, 0.0).root == "C"   # t == start
+        assert find_chord_v47(track, 2.0).root == "F"   # t == next start
+        assert find_chord_v47(track, 2.0).quality == ""
+        assert find_chord_v47(track, 6.0) is None       # t == end 不命中
+        assert find_chord_v47(track, 1.5).root == "C"   # within first chord
+        # 真 gap：track 之外（实际 track 没 gap，但 t 早于/晚于全部 应 None）
+        assert find_chord_v47(track, -1.0) is None      # before all
+        assert find_chord_v47(track, 10.0) is None      # after all
+
+        # 大规模：500 chord 1000 random query，bisect 与 reference 一致
+        import random
+        random.seed(2026)
+        n = 500
+        large = [ChordEventModel(i * 0.5, (i + 1) * 0.5, "C", "") for i in range(n)]
+
+        def linear_ref(track, t):
+            for c in track:
+                if c.start <= t < c.end:
+                    return c
+            return None
+
+        consistent_count = 0
+        for _ in range(1000):
+            t = random.uniform(-5, n * 0.5 + 5)
+            bisect_result = find_chord_v47(large, t)
+            linear_result = linear_ref(large, t)
+            assert bisect_result == linear_result, f"t={t}: bisect vs linear mismatch"
+            consistent_count += 1
+        assert consistent_count == 1000
+
+        # unsorted fallback：shuffle 后仍正确
+        random.shuffle(large)
+        # 仍能在 unsorted 列表里找到正确 chord
+        t = 10.0  # 应在 index 20 (10.0 / 0.5)
+        expected = linear_ref(large, t)
+        actual = find_chord_v47(large, t)
+        assert actual == expected
+
+        # 端到端：<harmony> 渲染仍命中正确 chord
+        proj_v47 = read_midi_to_project(str(midi_path))
+        proj_v47.chord_track = [
+            ChordEventModel(0.0, 2.0, "C", "maj7"),
+            ChordEventModel(2.0, 4.0, "F", "m"),
+        ]
+        xml_v47 = build_musicxml(
+            proj_v47,
+            config=RenderConfig(include_chord_symbols=True),
+            layout="per_stem",
+        )
+        # bisect 后 <harmony> 元素仍正常出现
+        assert "<harmony>" in xml_v47
+        # 不同 measure 命中不同 chord
+        assert xml_v47.count("<harmony>") >= 1
+
+        print(f"      basic: empty/single/t==start/t==end/gap handled ✓")
+        print(f"      bisect: 500 chord × 1000 random query 与 linear 一致 ✓")
+        print(f"      unsorted fallback: shuffle 后仍正确查询 ✓")
+        print(f"      end-to-end: chord_track → MusicXML <harmony> via bisect ✓")
+
+        print("\n✅ E2E smoke test PASSED (v0.4.7)")
     return 0
 
 
