@@ -105,9 +105,18 @@ class ChordConfig(BaseModel):
     """和弦识别配置。"""
 
     enabled: bool = False
+    # v0.4.8: 后端路由
+    # - madmom: v0.4.4 引入；仅 major/minor
+    # - btc-hcqt: v0.4.8 引入；170 类（major/minor/7/maj7/m7/dim/aug/sus2/sus4/...）
+    backend: Literal["madmom", "btc-hcqt"] = "btc-hcqt"
     models: list[str] = Field(default_factory=lambda: ["btc-hcqt", "chord-cnn-lstm"])
-    vocab: Literal["root", "root-quality", "extended"] = "extended"
+    vocab: Literal["root", "root-quality", "extended", "btc-extended"] = "btc-extended"
     chord_timeout_sec: int = Field(default=1800, ge=60, le=7200)
+
+    # v0.4.8: BTC-HCQT 专属配置
+    btc_model_path: str | None = None  # 用户提供 .pt 文件路径
+    btc_voca: Literal["large", "simple"] = "large"  # 170 类 vs 25 类
+    btc_timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
     # v0.4.5: chord quantize 到 bar/beat
     # 关闭时直接用 madmom 原始输出（100ms 帧粒度）

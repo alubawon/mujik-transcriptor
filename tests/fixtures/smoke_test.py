@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/14] generate synthetic wav → {fixture_path}")
+    print(f"[1/15] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/14] output dir: {out_dir}")
+        print(f"[2/15] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/14] mock heavy adapters...")
+        print("[3/15] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -89,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/14] run pipeline (mocked)...")
+        print("[4/15] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -121,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/14] verify pipeline outputs...")
+        print("[5/15] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -140,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -155,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/14] run mujik quantize (v0.2.3)...")
+        print("[6/15] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -176,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/14] run mujik render (v0.2.4)...")
+        print("[7/15] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -224,7 +224,7 @@ def main() -> int:
             print(f"      project.pdf: skipped ({e})")
 
         # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>；v0.4.3 验证：release 模式
-        print("[8/14] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
+        print("[8/15] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
         from mujik.config.schema import RenderConfig
         from mujik.midi.model import ChordEvent
 
@@ -287,7 +287,7 @@ def main() -> int:
         print(f"      v0.4.3 release curve: {n_bend_tags} <bend> siblings + <release/> marker")
 
         # 9. v0.4.2 验证：muscriptor multitrack adapter 配置 + 解析
-        print("[9/14] verify v0.4.2 muscriptor adapter...")
+        print("[9/15] verify v0.4.2 muscriptor adapter...")
         from mujik.config.schema import TranscribeConfig
         from mujik.transcribe.muscriptor_adapter import (
             MuscriptorAdapterError,
@@ -324,7 +324,7 @@ def main() -> int:
         print(f"      muscriptor adapter: {len(VALID_MUSCRIPTOR_MODELS)} valid models, subprocess-based")
 
         # 10. v0.4.3 验证：连续 bend 曲线渲染
-        print("[10/14] verify v0.4.3 continuous bend curve rendering...")
+        print("[10/15] verify v0.4.3 continuous bend curve rendering...")
         from mujik.score.bend import (
             BendPoint,
             build_bend_elements,
@@ -376,7 +376,7 @@ def main() -> int:
         print(f"      end-to-end MusicXML: shape=\"curved\" + bend+release ✓")
 
         # 11. v0.4.4 验证：自动和弦检测（madmom subprocess）
-        print("[11/14] verify v0.4.4 automatic chord detection...")
+        print("[11/15] verify v0.4.4 automatic chord detection...")
         from mujik.chord.madmom_adapter import (
             MADMOM_CHORD_TIMEOUT_DEFAULT,
             MadmomChordAdapterError,
@@ -455,7 +455,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> ✓")
 
         # 12. v0.4.5 验证：chord quantize 到 bar/beat
-        print("[12/14] verify v0.4.5 chord quantize to bar/beat...")
+        print("[12/15] verify v0.4.5 chord quantize to bar/beat...")
         from mujik.chord.quantize import (
             quantize_chord_track,
             snap_chord_to_grid,
@@ -543,7 +543,7 @@ def main() -> int:
         print(f"      end-to-end: raw 100ms → quantized 0.5s beat grid ✓")
 
         # 13. v0.4.6 验证：ChordEvent hardening 验证器
-        print("[13/14] verify v0.4.6 ChordEvent hardening validator...")
+        print("[13/15] verify v0.4.6 ChordEvent hardening validator...")
         from mujik.midi.model import (
             ALLOWED_QUALITIES_BY_VOCAB,
         )
@@ -580,9 +580,9 @@ def main() -> int:
         c_ph = ChordEventModel(0.0, 0.0, "C", "")
         assert c_ph.end == c_ph.start
 
-        # quality vocab 三档
+        # quality vocab 四档 (v0.4.6 + v0.4.8 新增 btc-extended)
         assert set(ALLOWED_QUALITIES_BY_VOCAB.keys()) == {
-            "root", "root-quality", "extended",
+            "root", "root-quality", "extended", "btc-extended",
         }
         # root vocab 只接受 ""
         assert "" in ALLOWED_QUALITIES_BY_VOCAB["root"]
@@ -631,7 +631,7 @@ def main() -> int:
         print(f"      end-to-end: harded chord → MusicXML <kind> ✓")
 
         # 14. v0.4.7 验证：find_chord_at_time O(log n) bisect
-        print("[14/14] verify v0.4.7 find_chord_at_time bisect optimization...")
+        print("[14/15] verify v0.4.7 find_chord_at_time bisect optimization...")
         from mujik.score.harmony import find_chord_at_time as find_chord_v47
 
         # 基础 case：与 v0.4.1 行为兼容
@@ -707,7 +707,126 @@ def main() -> int:
         print(f"      unsorted fallback: shuffle 后仍正确查询 ✓")
         print(f"      end-to-end: chord_track → MusicXML <harmony> via bisect ✓")
 
-        print("\n✅ E2E smoke test PASSED (v0.4.7)")
+        # 15. v0.4.8 验证：BTC-HCQT 7th/9th/11th/13th 延伸和弦
+        print("[15/15] verify v0.4.8 BTC-HCQT extended chord vocabulary...")
+        from mujik.chord.btc_hcqt_adapter import (
+            BTC_HCQT_TIMEOUT_DEFAULT,
+            BtcHcqtAdapterError,
+            _parse_btc_chord_label,
+            check_btc_hcqt_available,
+            detect_chords_with_btc,
+        )
+
+        # 验证 _parse_btc_chord_label
+        # BTC bare root = maj
+        c_bare = _parse_btc_chord_label("C")
+        assert c_bare is not None and c_bare.root == "C" and c_bare.quality == ""
+        # BTC 标准 14 种 quality
+        for label, exp_quality in [
+            ("C:min", "m"),
+            ("C:maj7", "maj7"),
+            ("C:7", "7"),
+            ("C:min7", "m7"),
+            ("C:dim", "dim"),
+            ("C:aug", "aug"),
+            ("C:dim7", "dim7"),
+            ("C:hdim7", "hdim7"),
+            ("C:minmaj7", "mM7"),
+            ("C:min6", "m6"),
+            ("C:maj6", "maj6"),
+            ("C:sus2", "sus2"),
+            ("C:sus4", "sus4"),
+        ]:
+            c = _parse_btc_chord_label(label)
+            assert c is not None, f"{label} parse failed"
+            assert c.root == "C", f"{label} root != C"
+            assert c.quality == exp_quality, f"{label} quality {c.quality} != {exp_quality}"
+        # 跳过 N/X
+        assert _parse_btc_chord_label("N") is None
+        assert _parse_btc_chord_label("X") is None
+        # BTC 不用 b（flat）：Db 被拒
+        assert _parse_btc_chord_label("Db:min") is None
+
+        # 验证 BTC adapter 模块可 import
+        assert callable(check_btc_hcqt_available)
+        assert callable(detect_chords_with_btc)
+        assert BTC_HCQT_TIMEOUT_DEFAULT == 1800
+        try:
+            raise BtcHcqtAdapterError("test")
+        except BtcHcqtAdapterError as e:
+            assert "test" in str(e)
+
+        # 验证 4 档 vocab (root/root-quality/extended/btc-extended)
+        # btc-extended 必须含 BTC 独有的 6ths / half-diminished / minor-major 7th
+        for q in ("m6", "maj6", "dim7", "hdim7", "mM7", "min6", "minmaj7"):
+            assert q in ALLOWED_QUALITIES_BY_VOCAB["btc-extended"], \
+                f"{q} not in btc-extended"
+        # extended 不含 BTC 独有 quality
+        for q in ("m6", "maj6", "dim7", "hdim7", "mM7"):
+            assert q not in ALLOWED_QUALITIES_BY_VOCAB["extended"], \
+                f"{q} should not be in extended"
+        # vocab 包含关系：root ⊂ root-quality ⊂ extended ⊂ btc-extended
+        assert ALLOWED_QUALITIES_BY_VOCAB["root"].issubset(
+            ALLOWED_QUALITIES_BY_VOCAB["root-quality"]
+        )
+        assert ALLOWED_QUALITIES_BY_VOCAB["root-quality"].issubset(
+            ALLOWED_QUALITIES_BY_VOCAB["extended"]
+        )
+        assert ALLOWED_QUALITIES_BY_VOCAB["extended"].issubset(
+            ALLOWED_QUALITIES_BY_VOCAB["btc-extended"]
+        )
+
+        # 验证 ChordConfig 新增 backend 字段
+        cfg_btc = ChordConfig()
+        assert cfg_btc.backend == "btc-hcqt"
+        assert cfg_btc.vocab == "btc-extended"
+        assert cfg_btc.btc_timeout_sec == 1800
+        # backend 可设为 madmom（向后兼容）
+        cfg_madmom = ChordConfig(backend="madmom")
+        assert cfg_madmom.backend == "madmom"
+
+        # 验证 detect_chords_with_btc subprocess 流程（mock）
+        chord_json_path = out_dir / f"btc_chords_{fixture_path.stem}.json"
+        chord_json_path.write_text(json.dumps([
+            {"start": 0.0, "end": 2.0, "label": "C"},
+            {"start": 2.0, "end": 4.0, "label": "F#:min7"},
+            {"start": 4.0, "end": 4.5, "label": "N"},
+            {"start": 4.5, "end": 5.0, "label": "G:maj7"},
+            {"start": 5.0, "end": 5.5, "label": "A:hdim7"},
+        ]))
+        with patch("subprocess.run",
+                   return_value=MagicMock(returncode=0, stderr="")):
+            btc_track = detect_chords_with_btc(fixture_path, out_dir=out_dir)
+        # 5 entries → 4 ChordEvent (N 过滤)
+        assert len(btc_track) == 4
+        assert btc_track[0].quality == ""       # C bare = maj
+        assert btc_track[1].quality == "m7"    # F#:min7
+        assert btc_track[2].quality == "maj7"  # G:maj7
+        assert btc_track[3].quality == "hdim7" # A:hdim7
+
+        # 端到端：BTC 风格 chord 注入 Project → MusicXML <harmony>
+        proj_btc = read_midi_to_project(str(midi_path))
+        proj_btc.chord_track = [
+            ChordEventModel(0.0, 1.0, "C", "maj7", vocab="btc-extended"),
+            ChordEventModel(1.0, 2.0, "A", "hdim7", vocab="btc-extended"),
+        ]
+        xml_btc = build_musicxml(
+            proj_btc,
+            config=RenderConfig(include_chord_symbols=True),
+            layout="per_stem",
+        )
+        assert "<harmony>" in xml_btc
+        assert "<kind>major-seventh</kind>" in xml_btc
+        # hdim7 不在 QUALITY_TO_KIND 透传，验证 Verovio 接受
+        assert "<kind>hdim7</kind>" in xml_btc
+
+        print(f"      _parse_btc_chord_label: 14 BTC qualities (maj/7/maj7/m7/dim7/hdim7/...) parsed ✓")
+        print(f"      vocab: btc-extended 含 BTC 独有 (6/dim7/hdim7/mM7) ✓")
+        print(f"      ChordConfig.backend: btc-hcqt/madmom routing ✓")
+        print(f"      detect_chords_with_btc: mock 5 entries → 4 chords (N filter) ✓")
+        print(f"      end-to-end: BTC chord → MusicXML <kind>major-seventh/hdim7</kind> ✓")
+
+        print("\n✅ E2E smoke test PASSED (v0.4.8)")
     return 0
 
 

@@ -33,7 +33,8 @@ _CHORD_ROOT_RE = re.compile(r"^[A-Ga-g][#b]?$")
 # - "root": 只有根音，quality 必须空
 # - "root-quality": 根 + 大/小三和弦（""、maj、M、m、min、minor、-）
 # - "extended": 在 root-quality 之上加 7、maj7、m7、dim、aug、sus（v0.4.6 范围）
-# v0.4.6 决定：extended 不含 9/11/13/alt（留 v0.4.8 BTC-HCQT）
+# - "btc-extended": v0.4.8 新增；BTC-ISMIR19 large_voca 全 14 种 quality
+#                   (min/maj/dim/aug/min6/maj6/min7/minmaj7/maj7/7/dim7/hdim7/sus2/sus4)
 ALLOWED_QUALITIES_BY_VOCAB: dict[str, frozenset[str]] = {
     "root": frozenset({""}),
     "root-quality": frozenset({
@@ -49,6 +50,20 @@ ALLOWED_QUALITIES_BY_VOCAB: dict[str, frozenset[str]] = {
         "dim", "diminished",
         "aug", "augmented", "+",
         "sus", "sus2", "sus4",
+    }),
+    "btc-extended": frozenset({
+        "", "maj", "major", "M",
+        "m", "min", "minor", "-",
+        "7", "dom", "dominant",
+        "maj7", "M7", "major7",
+        "m7", "min7", "minor7",
+        "dim", "diminished",
+        "aug", "augmented", "+",
+        "sus", "sus2", "sus4",
+        # BTC 独有：6ths, half-diminished, minor-major 7th
+        "6", "maj6", "m6", "min6",
+        "dim7", "hdim7",
+        "mM7", "minmaj7",
     }),
 }
 

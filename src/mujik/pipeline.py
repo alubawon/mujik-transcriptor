@@ -151,14 +151,20 @@ class Pipeline:
             time_sigs = build_default_segments(duration if duration > 0 else 1.0)
             logger.info("pipeline[2.5/7]: rhythm skipped (disabled)")
 
-        # ---- 2.7/7 和弦识别（chord 层，v0.4.4 新增）----
+        # ---- 2.7/7 和弦识别（chord 层，v0.4.4 madmom + v0.4.8 BTC-HCQT）----
         chord_track: list = []
         if cfg.chord.enabled:
             try:
-                from mujik.chord.madmom_adapter import detect_chords_with_madmom
-                chord_track = detect_chords_with_madmom(
-                    sep_input, config=cfg.chord, out_dir=out_dir,
-                )
+                if cfg.chord.backend == "btc-hcqt":
+                    from mujik.chord.btc_hcqt_adapter import detect_chords_with_btc
+                    chord_track = detect_chords_with_btc(
+                        sep_input, config=cfg.chord, out_dir=out_dir,
+                    )
+                else:  # "madmom" (default fallback for v0.4.4 compat)
+                    from mujik.chord.madmom_adapter import detect_chords_with_madmom
+                    chord_track = detect_chords_with_madmom(
+                        sep_input, config=cfg.chord, out_dir=out_dir,
+                    )
                 # 写 out/chords.json
                 (out_dir / "chords.json").write_text(json.dumps(
                     [
@@ -174,14 +180,14 @@ class Pipeline:
                     ensure_ascii=False, indent=2,
                 ))
                 logger.info(
-                    "pipeline[2.7/7]: chord: {n} chords detected",
-                    n=len(chord_track),
+                    "pipeline[2.7/7]: chord ({backend}): {n} chords detected",
+                    backend=cfg.chord.backend, n=len(chord_track),
                 )
             except Exception as e:  # noqa: BLE001
                 logger.warning(
-                    "pipeline[2.7/7]: madmom chord failed: {err}, "
+                    "pipeline[2.7/7]: {backend} chord failed: {err}, "
                     "skipping (chord_track=[])",
-                    err=e,
+                    backend=cfg.chord.backend, err=e,
                 )
                 chord_track = []
         else:
@@ -249,11 +255,12 @@ class Pipeline:
             project.tempo_map = [tempo]
             project.chord_track = quantized_chord_track  # v0.4.5
             project.metadata.update({
-                "mujik_version": "0.4.5",
+                "mujik_version": "0.4.8",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
                 "chord_enabled": cfg.chord.enabled,
+                "chord_backend": cfg.chord.backend,
                 "chord_quantize_enabled": cfg.chord.quantize_enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
@@ -286,11 +293,12 @@ class Pipeline:
             tempo_map=[tempo],
             chord_track=quantized_chord_track,  # v0.4.5
             metadata={
-                "mujik_version": "0.4.5",
+                "mujik_version": "0.4.8",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
                 "chord_enabled": cfg.chord.enabled,
+                "chord_backend": cfg.chord.backend,
                 "chord_quantize_enabled": cfg.chord.quantize_enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
