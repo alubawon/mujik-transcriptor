@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/16] generate synthetic wav → {fixture_path}")
+    print(f"[1/17] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/16] output dir: {out_dir}")
+        print(f"[2/17] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/16] mock heavy adapters...")
+        print("[3/17] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -89,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/16] run pipeline (mocked)...")
+        print("[4/17] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -121,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/16] verify pipeline outputs...")
+        print("[5/17] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -140,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -155,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/16] run mujik quantize (v0.2.3)...")
+        print("[6/17] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -176,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/16] run mujik render (v0.2.4)...")
+        print("[7/17] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -224,7 +224,7 @@ def main() -> int:
             print(f"      project.pdf: skipped ({e})")
 
         # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>；v0.4.3 验证：release 模式
-        print("[8/16] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
+        print("[8/17] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
         from mujik.config.schema import RenderConfig
         from mujik.midi.model import ChordEvent
 
@@ -287,7 +287,7 @@ def main() -> int:
         print(f"      v0.4.3 release curve: {n_bend_tags} <bend> siblings + <release/> marker")
 
         # 9. v0.4.2 验证：muscriptor multitrack adapter 配置 + 解析
-        print("[9/16] verify v0.4.2 muscriptor adapter...")
+        print("[9/17] verify v0.4.2 muscriptor adapter...")
         from mujik.config.schema import TranscribeConfig
         from mujik.transcribe.muscriptor_adapter import (
             MuscriptorAdapterError,
@@ -324,7 +324,7 @@ def main() -> int:
         print(f"      muscriptor adapter: {len(VALID_MUSCRIPTOR_MODELS)} valid models, subprocess-based")
 
         # 10. v0.4.3 验证：连续 bend 曲线渲染
-        print("[10/16] verify v0.4.3 continuous bend curve rendering...")
+        print("[10/17] verify v0.4.3 continuous bend curve rendering...")
         from mujik.score.bend import (
             BendPoint,
             build_bend_elements,
@@ -376,7 +376,7 @@ def main() -> int:
         print(f"      end-to-end MusicXML: shape=\"curved\" + bend+release ✓")
 
         # 11. v0.4.4 验证：自动和弦检测（madmom subprocess）
-        print("[11/16] verify v0.4.4 automatic chord detection...")
+        print("[11/17] verify v0.4.4 automatic chord detection...")
         from mujik.chord.madmom_adapter import (
             MADMOM_CHORD_TIMEOUT_DEFAULT,
             MadmomChordAdapterError,
@@ -455,7 +455,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> ✓")
 
         # 12. v0.4.5 验证：chord quantize 到 bar/beat
-        print("[12/16] verify v0.4.5 chord quantize to bar/beat...")
+        print("[12/17] verify v0.4.5 chord quantize to bar/beat...")
         from mujik.chord.quantize import (
             quantize_chord_track,
             snap_chord_to_grid,
@@ -543,7 +543,7 @@ def main() -> int:
         print(f"      end-to-end: raw 100ms → quantized 0.5s beat grid ✓")
 
         # 13. v0.4.6 验证：ChordEvent hardening 验证器
-        print("[13/16] verify v0.4.6 ChordEvent hardening validator...")
+        print("[13/17] verify v0.4.6 ChordEvent hardening validator...")
         from mujik.midi.model import (
             ALLOWED_QUALITIES_BY_VOCAB,
         )
@@ -631,7 +631,7 @@ def main() -> int:
         print(f"      end-to-end: harded chord → MusicXML <kind> ✓")
 
         # 14. v0.4.7 验证：find_chord_at_time O(log n) bisect
-        print("[14/16] verify v0.4.7 find_chord_at_time bisect optimization...")
+        print("[14/17] verify v0.4.7 find_chord_at_time bisect optimization...")
         from mujik.score.harmony import find_chord_at_time as find_chord_v47
 
         # 基础 case：与 v0.4.1 行为兼容
@@ -708,7 +708,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> via bisect ✓")
 
         # 15. v0.4.8 验证：BTC-HCQT 7th/9th/11th/13th 延伸和弦
-        print("[15/16] verify v0.4.8 BTC-HCQT extended chord vocabulary...")
+        print("[15/17] verify v0.4.8 BTC-HCQT extended chord vocabulary...")
         from mujik.chord.btc_hcqt_adapter import (
             BTC_HCQT_TIMEOUT_DEFAULT,
             BtcHcqtAdapterError,
@@ -827,7 +827,7 @@ def main() -> int:
         print(f"      end-to-end: BTC chord → MusicXML <kind>major-seventh/hdim7</kind> ✓")
 
         # 16. v0.4.9 验证：chord track groove 联动 (swing)
-        print("[16/16] verify v0.4.9 chord track groove linking...")
+        print("[16/17] verify v0.4.9 chord track groove linking...")
         from mujik.chord.groove import apply_groove_to_chord_track
 
         # 构造拍号段
@@ -929,7 +929,117 @@ def main() -> int:
         print(f"      ChordConfig.apply_groove: 默认 False, opt-in ✓")
         print(f"      end-to-end: quantize → groove 串接 (3 on-beat chords) ✓")
 
-        print("\n✅ E2E smoke test PASSED (v0.4.9)")
+        # 17. v0.5.0 验证：5-genre benchmark 框架
+        print("[17/17] verify v0.5.0 5-genre benchmark framework...")
+        from mujik.benchmarks import (
+            BENCHMARK_GENRES,
+            BenchmarkSample,
+        )
+        from mujik.benchmarks.datasets.synthetic import SyntheticBenchmarkDataset
+        from mujik.benchmarks.metrics import (
+            BeatTrackingMetrics,
+            ChordRecognitionMetrics,
+            NoteTranscriptionMetrics,
+        )
+        from mujik.benchmarks.report import render_json, render_markdown
+        from mujik.benchmarks.runner import BenchmarkRunner
+
+        # 验证 5 genre
+        assert set(BENCHMARK_GENRES) == {"pop", "jazz", "metal", "rnb", "classical"}
+
+        # 验证 synthetic dataset
+        bench_dir = out_dir / "bench"
+        ds = SyntheticBenchmarkDataset(base_dir=bench_dir)
+        samples = ds.list_samples()
+        assert len(samples) == 15  # 5 × 3
+        genres = {s.genre for s in samples}
+        assert genres == set(BENCHMARK_GENRES)
+        for s in samples:
+            assert Path(s.audio_path).exists()
+            assert len(s.gt_beats) > 0
+            assert len(s.gt_chords) > 0
+            assert len(s.gt_notes) > 0
+
+        # 验证 metrics 三个 calculator
+        ntm = NoteTranscriptionMetrics()
+        assert ntm.name == "note_transcription"
+        result_ntm = ntm.compute(
+            {"notes": [(60, 0.0, 0.5)]},
+            {"notes": [(60, 0.0, 0.5)]},
+        )
+        assert result_ntm["f1"] == 1.0
+
+        btm = BeatTrackingMetrics()
+        assert btm.name == "beat_tracking"
+        result_btm = btm.compute(
+            {"beats": [0.0, 0.5, 1.0]},
+            {"beats": [0.0, 0.5, 1.0]},
+        )
+        # mir_eval 可能不可用；fallback 到 0
+        assert "cmlt" in result_btm
+
+        crm = ChordRecognitionMetrics()
+        assert crm.name == "chord_recognition"
+        result_crm = crm.compute(
+            {"chords": [(0.0, 1.0, "C", "")]},
+            {"chords": [(0.0, 1.0, "C", "")]},
+        )
+        assert "majmin" in result_crm
+
+        # 验证 runner + report（用完美 pipeline）
+        def perfect_pipeline(audio_path: str) -> dict:
+            gt_path = Path(audio_path).with_suffix(".json")
+            gt = json.loads(gt_path.read_text())
+            return {
+                "note_transcription": {"notes": gt.get("notes", [])},
+                "beat_tracking": {"beats": gt.get("beats", [])},
+                "chord_recognition": {"chords": gt.get("chords", [])},
+            }
+
+        runner = BenchmarkRunner(
+            version="0.5.0",
+            metric_calculators={
+                "note_transcription": ntm,
+                "beat_tracking": btm,
+                "chord_recognition": crm,
+            },
+        )
+        report = runner.run(ds, perfect_pipeline)
+        assert report.version == "0.5.0"
+        assert report.n_samples == 15
+        assert report.dataset_name == "synthetic_5genre_baseline"
+        assert report.overall.get("note_transcription", 0) >= 0.9
+        # 5 genre 全部聚合
+        assert set(report.per_genre.keys()) == set(BENCHMARK_GENRES)
+
+        # 验证 markdown + JSON report
+        md = render_markdown(report)
+        assert "v0.5.0" in md
+        assert "synthetic_5genre_baseline" in md
+        assert "Overall" in md
+        assert "Per-Genre" in md
+        for genre in BENCHMARK_GENRES:
+            assert genre in md
+
+        js = render_json(report)
+        parsed = json.loads(js)
+        assert parsed["version"] == "0.5.0"
+        assert parsed["n_samples"] == 15
+        assert len(parsed["per_sample"]) == 15
+
+        # 写 out/bench_report.md 供查看
+        (out_dir / "bench_report.md").write_text(md, encoding="utf-8")
+        (out_dir / "bench_report.json").write_text(js, encoding="utf-8")
+        print(f"      bench_report.md: {len(md)} chars")
+        print(f"      bench_report.json: {len(js)} chars")
+
+        print(f"      5 genres: pop/jazz/metal/rnb/classical ✓")
+        print(f"      synthetic dataset: 15 samples (5×3) with gt notes/beats/chords ✓")
+        print(f"      metrics: note_f1/beat_cmlt/chord_majmin (mir_eval if available) ✓")
+        print(f"      runner: {report.n_samples} samples aggregated per genre ✓")
+        print(f"      report: markdown table + JSON dump ✓")
+
+        print("\n✅ E2E smoke test PASSED (v0.5.0)")
     return 0
 
 

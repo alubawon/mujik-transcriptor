@@ -93,8 +93,13 @@ bench = [
   "museval>=0.4",
   "pytest-benchmark>=4.0",
 ]
+# v0.5.0: benchmark 框架（5-genre evaluation）
+benchmark = [
+  "mir_eval>=0.7",  # beat/chord/onset metrics
+  "numpy>=1.26,<2.0",
+]
 all = [
-  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,preprocess-denoise,render,chord]",
+  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,preprocess-denoise,render,chord,benchmark]",
 ]
 dev = [
   "pytest>=7.4",
