@@ -21,6 +21,7 @@ from loguru import logger
 from mujik.config.schema import PipelineConfig
 from mujik.midi.io import write_project_to_midi
 from mujik.midi.model import Project, TempoSegment
+from mujik.pipeline_progress import PipelineProgress
 from mujik.preprocess.loudnorm import normalize_loudness
 from mujik.rhythm.madmom_adapter import track_beats_with_madmom
 from mujik.rhythm.time_signature import infer_time_signature_from_downbeats
@@ -28,6 +29,11 @@ from mujik.separate.demucs_adapter import separate_with_demucs
 from mujik.separate.model import Stems
 from mujik.time_signature.model import build_default_segments
 from mujik.transcribe.router import transcribe_stem
+
+# Pipeline 固定阶段数（per_stem 模式：denoise + loudnorm + rhythm + chord + quantize
+# + groove + demucs + per_stem transcribe + write + multitrack 分支另算）
+PIPELINE_TOTAL_STEPS_PERSTEM = 10
+PIPELINE_TOTAL_STEPS_MULTITRACK = 6
 
 
 class Pipeline:
@@ -38,7 +44,7 @@ class Pipeline:
         logger.info("Pipeline initialized with preset={}", config.preset)
 
     def run(self) -> Project:
-        """执行 v0.2.2 完整管线。"""
+        """执行 v0.2.2 完整管线（v0.5.1 加进度条）。"""
         cfg = self.config
         audio_path = Path(cfg.input_path)
         if not audio_path.exists():
@@ -47,8 +53,21 @@ class Pipeline:
         out_dir = Path(cfg.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
 
+        # ---- 0. 顶层进度条（v0.5.1：自动 no-op on non-TTY / no tqdm）----
+        # 不包裹整套代码（避免大段重缩进）；用 prog 变量，全程可用，
+        # 退出前手动 close。
+        initial_total = (
+            PIPELINE_TOTAL_STEPS_MULTITRACK
+            if cfg.transcribe.mode == "multitrack"
+            else PIPELINE_TOTAL_STEPS_PERSTEM
+        )
+        prog = PipelineProgress(
+            total=initial_total, title=f"mujik run ({cfg.preset})",
+        ).__enter__()
+
         # ---- 1. 加载音频元数据 ----
         duration, sample_rate = _probe_audio(audio_path)
+        prog.advance("probe", extra=f"{duration:.1f}s")
         logger.info(
             "pipeline[1/7]: input={path}, duration={dur:.2f}s, sr={sr}",
             path=audio_path, dur=duration, sr=sample_rate,
@@ -74,6 +93,7 @@ class Pipeline:
         else:
             audio_path_for_sep = audio_path
             logger.info("pipeline[1.5/7]: denoise skipped (disabled)")
+        prog.advance("denoise")
 
         # ---- 2. 响度归一 ----
         if cfg.loudnorm.enabled:
@@ -83,6 +103,7 @@ class Pipeline:
         else:
             sep_input = audio_path_for_sep
             logger.info("pipeline[2/7]: loudnorm skipped (disabled)")
+        prog.advance("loudnorm")
 
         # ---- 2.5/2.6 节拍 + 时间签名（rhythm 层，v0.2.2 新增）----
         if cfg.rhythm.enabled:
@@ -150,6 +171,7 @@ class Pipeline:
             )
             time_sigs = build_default_segments(duration if duration > 0 else 1.0)
             logger.info("pipeline[2.5/7]: rhythm skipped (disabled)")
+        prog.advance("rhythm", extra=f"{tempo.bpm:.0f} BPM")
 
         # ---- 2.7/7 和弦识别（chord 层，v0.4.4 madmom + v0.4.8 BTC-HCQT）----
         chord_track: list = []
@@ -192,6 +214,7 @@ class Pipeline:
                 chord_track = []
         else:
             logger.info("pipeline[2.7/7]: chord skipped (disabled)")
+        prog.advance("chord", extra=f"{len(chord_track)} chords")
 
         # ---- 2.8/7 chord quantize（v0.4.5 新增）----
         quantized_chord_track: list = chord_track
@@ -236,6 +259,7 @@ class Pipeline:
                 quantized_chord_track = chord_track
         else:
             logger.info("pipeline[2.8/7]: chord quantize skipped")
+        prog.advance("chord-quantize")
 
         # ---- 2.85/7 chord groove 联动（v0.4.9 新增，默认关闭）----
         grooved_chord_track: list = quantized_chord_track
@@ -286,6 +310,7 @@ class Pipeline:
                 grooved_chord_track = quantized_chord_track
         else:
             logger.info("pipeline[2.85/7]: chord groove skipped (disabled)")
+        prog.advance("chord-groove")
 
         # ---- 3. 源分离 OR muscriptor multitrack 模式分支（v0.4.2）----
         if cfg.transcribe.mode == "multitrack":
@@ -305,7 +330,7 @@ class Pipeline:
             project.tempo_map = [tempo]
             project.chord_track = grooved_chord_track  # v0.4.9
             project.metadata.update({
-                "mujik_version": "0.4.9",
+                "mujik_version": "0.5.1",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
@@ -324,6 +349,10 @@ class Pipeline:
                 "pipeline[3'/7]: muscriptor multitrack done, {n} tracks",
                 n=len(project.tracks),
             )
+            prog.advance("muscriptor", extra=f"{len(project.tracks)} tracks")
+            prog.advance("midi-write", extra=f"{project.total_notes()} notes")
+            prog.advance("metadata")
+            prog.__exit__(None, None, None)
             return project
 
         # ---- 3. Demucs 4-stem 分离（per_stem 模式）----
@@ -335,6 +364,9 @@ class Pipeline:
             "pipeline[3/7]: demucs done, {n} stems ({names})",
             n=stems.stem_count, names=list(stems.names),
         )
+        prog.advance("demucs", extra=f"{stems.stem_count} stems")
+        # per-stem 阶段：动态增加总步数
+        prog.update_total(prog.step_idx + stems.stem_count + 2)
 
         # ---- 4. 初始化 Project ----
         project = Project(
@@ -345,7 +377,7 @@ class Pipeline:
             tempo_map=[tempo],
             chord_track=grooved_chord_track,  # v0.4.9
             metadata={
-                "mujik_version": "0.4.9",
+                "mujik_version": "0.5.1",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
@@ -374,6 +406,7 @@ class Pipeline:
                     "pipeline[5/7]: transcribe {stem} failed: {err}",
                     stem=stem.name, err=e,
                 )
+                prog.advance(f"transcribe:{stem.name}", extra="failed")
                 continue
 
             track = project.get_track(stem.name)  # type: ignore[arg-type]
@@ -384,6 +417,7 @@ class Pipeline:
                 "pipeline[5/7]: {stem} → {n} notes",
                 stem=stem.name, n=len(track.notes),
             )
+            prog.advance(f"transcribe:{stem.name}", extra=f"{len(track.notes)} notes")
 
         # ---- 6. 写 MIDI ----
         midi_path = out_dir / "project.mid"
@@ -393,12 +427,15 @@ class Pipeline:
             path=midi_path, tracks=len(project.tracks),
             notes=project.total_notes(),
         )
+        prog.advance("midi-write", extra=f"{project.total_notes()} notes")
 
         # ---- 7. 写 metadata sidecar ----
         meta_path = out_dir / "project.json"
         meta_path.write_text(json.dumps(
             project.metadata, ensure_ascii=False, indent=2,
         ))
+        prog.advance("metadata")
+        prog.__exit__(None, None, None)
 
         return project
 
