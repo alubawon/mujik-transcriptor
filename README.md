@@ -41,20 +41,20 @@ ls out/
 
 ## 🪄 一键 demo
 
-仓库自带 `buhee/buhee.mp3` 作为 demo 音频；脚本接受路径作入参。
+仓库自带 `buhee/buhee.mp3` 作为默认 demo 音频；也可传入自己的。
 
 ```bash
-# 用仓库自带 buhee.mp3 跑三 preset 对比
-./scripts/run_demo.sh buhee/buhee.mp3
+# 用默认 buhee/buhee.mp3 跑 pop/jazz/metal 三 preset 对比
+./scripts/run_demo.sh
 
-# 用自己的音频
-./scripts/run_demo.sh path/to/your_song.wav
+# 用自己的 wav
+./scripts/run_demo.sh ~/Music/my_song.wav
 
-# 只跑前 30 秒（需 ffmpeg）
-./scripts/run_demo.sh buhee/buhee.mp3 30
+# 只跑前 30 秒（需要 ffmpeg）
+./scripts/run_demo.sh ~/Music/my_song.wav 30
 
-# 替换 demo 音频后再跑
-cp my_favorite.mp3 buhee/buhee.mp3 && ./scripts/run_demo.sh buhee/buhee.mp3
+# 把 buhee.mp3 换成别的 demo 音频
+cp my_demo.mp3 buhee/buhee.mp3 && ./scripts/run_demo.sh
 ```
 
 每次跑出 `demo_out/{pop,jazz,metal}/{project.mid, score.pdf, chords.json, ...}` + `demo_out/demo_report.md`。
@@ -216,8 +216,8 @@ pytest tests/ -q
 # 跑最小管线（首次会下载模型权重到 ~/.cache/huggingface/）
 mujik run --input song.wav --output out/ --config config/default.yaml
 
-# 跑一键 demo（用仓库自带 buhee.mp3）
-./scripts/run_demo.sh buhee/buhee.mp3
+# 跑一键 demo（需要真实 wav）
+./scripts/run_demo.sh path/to/your_song.wav
 ```
 
 ## 仓库结构
