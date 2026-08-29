@@ -237,6 +237,56 @@ class Pipeline:
         else:
             logger.info("pipeline[2.8/7]: chord quantize skipped")
 
+        # ---- 2.85/7 chord groove 联动（v0.4.9 新增，默认关闭）----
+        grooved_chord_track: list = quantized_chord_track
+        if (
+            cfg.chord.enabled
+            and cfg.chord.quantize_enabled
+            and cfg.chord.apply_groove
+            and quantized_chord_track
+        ):
+            try:
+                from mujik.chord.groove import apply_groove_to_chord_track
+                grooved_chord_track = apply_groove_to_chord_track(
+                    quantized_chord_track,
+                    time_sigs,
+                    tempo.bpm,
+                    template=cfg.chord.chord_groove_template,
+                    strength=cfg.chord.chord_groove_strength,
+                    ratio=cfg.chord.chord_groove_ratio,
+                    duration=duration,
+                )
+                # 写 out/chords_grooved.json（第三份 artifact）
+                (out_dir / "chords_grooved.json").write_text(json.dumps(
+                    [
+                        {
+                            "start": c.start,
+                            "end": c.end,
+                            "root": c.root,
+                            "quality": c.quality,
+                            "bass": c.bass,
+                        }
+                        for c in grooved_chord_track
+                    ],
+                    ensure_ascii=False, indent=2,
+                ))
+                logger.info(
+                    "pipeline[2.85/7]: chord groove: {tpl} strength={s} "
+                    "({n} chords shifted)",
+                    tpl=cfg.chord.chord_groove_template,
+                    s=cfg.chord.chord_groove_strength,
+                    n=len(grooved_chord_track),
+                )
+            except Exception as e:  # noqa: BLE001
+                logger.warning(
+                    "pipeline[2.85/7]: chord groove failed: {err}, "
+                    "using quantized chord_track",
+                    err=e,
+                )
+                grooved_chord_track = quantized_chord_track
+        else:
+            logger.info("pipeline[2.85/7]: chord groove skipped (disabled)")
+
         # ---- 3. 源分离 OR muscriptor multitrack 模式分支（v0.4.2）----
         if cfg.transcribe.mode == "multitrack":
             # v0.4.2 multitrack 模式：跳过源分离，直接 muscriptor 多乐器转录
@@ -253,15 +303,17 @@ class Pipeline:
             project.sample_rate = sample_rate
             project.time_signatures = time_sigs
             project.tempo_map = [tempo]
-            project.chord_track = quantized_chord_track  # v0.4.5
+            project.chord_track = grooved_chord_track  # v0.4.9
             project.metadata.update({
-                "mujik_version": "0.4.8",
+                "mujik_version": "0.4.9",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
                 "chord_enabled": cfg.chord.enabled,
                 "chord_backend": cfg.chord.backend,
                 "chord_quantize_enabled": cfg.chord.quantize_enabled,
+                "chord_groove_enabled": cfg.chord.apply_groove,
+                "chord_groove_template": cfg.chord.chord_groove_template,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,
                 "transcribe_mode": "multitrack",
@@ -291,14 +343,16 @@ class Pipeline:
             sample_rate=sample_rate,
             time_signatures=time_sigs,
             tempo_map=[tempo],
-            chord_track=quantized_chord_track,  # v0.4.5
+            chord_track=grooved_chord_track,  # v0.4.9
             metadata={
-                "mujik_version": "0.4.8",
+                "mujik_version": "0.4.9",
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
                 "chord_enabled": cfg.chord.enabled,
                 "chord_backend": cfg.chord.backend,
+                "chord_groove_enabled": cfg.chord.apply_groove,
+                "chord_groove_template": cfg.chord.chord_groove_template,
                 "chord_quantize_enabled": cfg.chord.quantize_enabled,
                 "denoise_enabled": cfg.preprocess.denoise_enabled,
                 "denoise_backend": cfg.preprocess.denoise_backend,

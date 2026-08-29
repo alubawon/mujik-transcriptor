@@ -128,6 +128,16 @@ class ChordConfig(BaseModel):
     # 丢弃短于此秒数的 chord（madmom 误识别通常很短）
     min_duration_sec: float = Field(default=0.5, ge=0.0, le=10.0)
 
+    # v0.4.9: chord groove 联动
+    # 默认关闭（apply_groove=False）以保护音频准确性；opt-in 启用
+    apply_groove: bool = False
+    # groove 模板（复用 quantize.groove 已支持："straight" / "swing16"）
+    chord_groove_template: Literal["straight", "swing16"] = "swing16"
+    # groove 强度：0=noop, 1=full offset
+    chord_groove_strength: float = Field(default=1.0, ge=0.0, le=1.0)
+    # swing 比例（仅 swing16 生效；0.5=直拍，>0.5=偏 swing）
+    chord_groove_ratio: float = Field(default=0.6, ge=0.5, le=0.8)
+
 
 class QuantizeConfig(BaseModel):
     """节拍量化配置。"""

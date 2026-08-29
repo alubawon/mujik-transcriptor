@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/15] generate synthetic wav → {fixture_path}")
+    print(f"[1/16] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/15] output dir: {out_dir}")
+        print(f"[2/16] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/15] mock heavy adapters...")
+        print("[3/16] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -89,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/15] run pipeline (mocked)...")
+        print("[4/16] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -121,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/15] verify pipeline outputs...")
+        print("[5/16] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -140,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -155,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/15] run mujik quantize (v0.2.3)...")
+        print("[6/16] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -176,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/15] run mujik render (v0.2.4)...")
+        print("[7/16] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -224,7 +224,7 @@ def main() -> int:
             print(f"      project.pdf: skipped ({e})")
 
         # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>；v0.4.3 验证：release 模式
-        print("[8/15] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
+        print("[8/16] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
         from mujik.config.schema import RenderConfig
         from mujik.midi.model import ChordEvent
 
@@ -287,7 +287,7 @@ def main() -> int:
         print(f"      v0.4.3 release curve: {n_bend_tags} <bend> siblings + <release/> marker")
 
         # 9. v0.4.2 验证：muscriptor multitrack adapter 配置 + 解析
-        print("[9/15] verify v0.4.2 muscriptor adapter...")
+        print("[9/16] verify v0.4.2 muscriptor adapter...")
         from mujik.config.schema import TranscribeConfig
         from mujik.transcribe.muscriptor_adapter import (
             MuscriptorAdapterError,
@@ -324,7 +324,7 @@ def main() -> int:
         print(f"      muscriptor adapter: {len(VALID_MUSCRIPTOR_MODELS)} valid models, subprocess-based")
 
         # 10. v0.4.3 验证：连续 bend 曲线渲染
-        print("[10/15] verify v0.4.3 continuous bend curve rendering...")
+        print("[10/16] verify v0.4.3 continuous bend curve rendering...")
         from mujik.score.bend import (
             BendPoint,
             build_bend_elements,
@@ -376,7 +376,7 @@ def main() -> int:
         print(f"      end-to-end MusicXML: shape=\"curved\" + bend+release ✓")
 
         # 11. v0.4.4 验证：自动和弦检测（madmom subprocess）
-        print("[11/15] verify v0.4.4 automatic chord detection...")
+        print("[11/16] verify v0.4.4 automatic chord detection...")
         from mujik.chord.madmom_adapter import (
             MADMOM_CHORD_TIMEOUT_DEFAULT,
             MadmomChordAdapterError,
@@ -455,7 +455,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> ✓")
 
         # 12. v0.4.5 验证：chord quantize 到 bar/beat
-        print("[12/15] verify v0.4.5 chord quantize to bar/beat...")
+        print("[12/16] verify v0.4.5 chord quantize to bar/beat...")
         from mujik.chord.quantize import (
             quantize_chord_track,
             snap_chord_to_grid,
@@ -543,7 +543,7 @@ def main() -> int:
         print(f"      end-to-end: raw 100ms → quantized 0.5s beat grid ✓")
 
         # 13. v0.4.6 验证：ChordEvent hardening 验证器
-        print("[13/15] verify v0.4.6 ChordEvent hardening validator...")
+        print("[13/16] verify v0.4.6 ChordEvent hardening validator...")
         from mujik.midi.model import (
             ALLOWED_QUALITIES_BY_VOCAB,
         )
@@ -631,7 +631,7 @@ def main() -> int:
         print(f"      end-to-end: harded chord → MusicXML <kind> ✓")
 
         # 14. v0.4.7 验证：find_chord_at_time O(log n) bisect
-        print("[14/15] verify v0.4.7 find_chord_at_time bisect optimization...")
+        print("[14/16] verify v0.4.7 find_chord_at_time bisect optimization...")
         from mujik.score.harmony import find_chord_at_time as find_chord_v47
 
         # 基础 case：与 v0.4.1 行为兼容
@@ -708,7 +708,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> via bisect ✓")
 
         # 15. v0.4.8 验证：BTC-HCQT 7th/9th/11th/13th 延伸和弦
-        print("[15/15] verify v0.4.8 BTC-HCQT extended chord vocabulary...")
+        print("[15/16] verify v0.4.8 BTC-HCQT extended chord vocabulary...")
         from mujik.chord.btc_hcqt_adapter import (
             BTC_HCQT_TIMEOUT_DEFAULT,
             BtcHcqtAdapterError,
@@ -826,7 +826,110 @@ def main() -> int:
         print(f"      detect_chords_with_btc: mock 5 entries → 4 chords (N filter) ✓")
         print(f"      end-to-end: BTC chord → MusicXML <kind>major-seventh/hdim7</kind> ✓")
 
-        print("\n✅ E2E smoke test PASSED (v0.4.8)")
+        # 16. v0.4.9 验证：chord track groove 联动 (swing)
+        print("[16/16] verify v0.4.9 chord track groove linking...")
+        from mujik.chord.groove import apply_groove_to_chord_track
+
+        # 构造拍号段
+        sigs_groove = [
+            TimeSignatureSegment(
+                start_time=0.0, end_time=10.0,
+                time_signature=(4, 4), confidence=1.0, source="manual",
+            ),
+        ]
+
+        # 验证 straight = noop
+        c_onbeat = ChordEventModel(0.0, 0.5, "C", "")
+        c_offbeat = ChordEventModel(0.5, 0.75, "F", "")
+        c_beat2 = ChordEventModel(1.0, 1.5, "G", "7")
+        track_straight = [c_onbeat, c_offbeat, c_beat2]
+        out_straight = apply_groove_to_chord_track(
+            track_straight, sigs_groove, bpm=120.0,
+            template="straight", strength=1.0,
+        )
+        for orig, shifted in zip(track_straight, out_straight):
+            assert orig.start == shifted.start
+            assert orig.end == shifted.end
+
+        # 验证 swing16 + 120 BPM 4/4
+        # 120 BPM → beat = 0.5s, offbeat (0.5 beat) = 0.25s
+        # chord 边界 0.0 (beat) / 0.5 (beat) / 0.75 (offbeat) / 1.0 (beat) / 1.5 (beat)
+        out_swing = apply_groove_to_chord_track(
+            track_straight, sigs_groove, bpm=120.0,
+            template="swing16", strength=1.0, ratio=0.6,
+        )
+        # chord 0: 0.0 (beat) → 0.0, 0.5 (beat) → 0.5
+        assert out_swing[0].start == 0.0
+        assert out_swing[0].end == 0.5
+        # chord 1: 0.5 (beat) → 0.5, 0.75 (offbeat) → 0.8
+        assert out_swing[1].start == 0.5
+        assert out_swing[1].end == 0.8
+        # chord 2: 1.0 (beat) → 1.0, 1.5 (beat) → 1.5
+        assert out_swing[2].start == 1.0
+        assert out_swing[2].end == 1.5
+
+        # 验证 strength 0 = noop
+        out_s0 = apply_groove_to_chord_track(
+            [c_offbeat], sigs_groove, bpm=120.0,
+            template="swing16", strength=0.0, ratio=0.6,
+        )
+        assert out_s0[0].end == 0.75
+
+        # 验证 strength 0.5 = 半偏移（0.025s 替代 0.05s）
+        out_s05 = apply_groove_to_chord_track(
+            [c_offbeat], sigs_groove, bpm=120.0,
+            template="swing16", strength=0.5, ratio=0.6,
+        )
+        assert out_s05[0].end == 0.775
+
+        # 验证 ratio 0.5 = 直拍（无偏移）
+        out_r05 = apply_groove_to_chord_track(
+            [c_offbeat], sigs_groove, bpm=120.0,
+            template="swing16", strength=1.0, ratio=0.5,
+        )
+        assert out_r05[0].end == 0.75
+
+        # 验证 ChordConfig 新增 groove 字段（默认关闭）
+        cfg_groove = ChordConfig()
+        assert cfg_groove.apply_groove is False  # v0.4.9 默认关闭
+        assert cfg_groove.chord_groove_template == "swing16"
+        assert cfg_groove.chord_groove_strength == 1.0
+        assert cfg_groove.chord_groove_ratio == 0.6
+
+        # 启用 groove 时，所有字段都通过
+        cfg_groove_on = ChordConfig(apply_groove=True)
+        assert cfg_groove_on.apply_groove is True
+
+        # 端到端：与 quantize 串接
+        from mujik.chord.quantize import quantize_chord_track
+        raw_for_q = [
+            ChordEventModel(0.0, 0.5, "C", ""),
+            ChordEventModel(0.5, 1.0, "F", ""),
+            ChordEventModel(1.0, 1.5, "G", "7"),
+        ]
+        quantized_v49 = quantize_chord_track(
+            raw_for_q, sigs_groove, bpm=120.0,
+            grid_per_bar=4, merge_consecutive=False, min_duration_sec=0.0,
+        )
+        grooved_v49 = apply_groove_to_chord_track(
+            quantized_v49, sigs_groove, bpm=120.0,
+            template="swing16", strength=1.0, ratio=0.6,
+        )
+        for c in grooved_v49:
+            assert c.end > c.start
+        # 全部都是 on-beat 边界 → 不偏移
+        assert grooved_v49[0].start == 0.0 and grooved_v49[0].end == 0.5
+        assert grooved_v49[1].start == 0.5 and grooved_v49[1].end == 1.0
+        assert grooved_v49[2].start == 1.0 and grooved_v49[2].end == 1.5
+
+        print(f"      straight: noop (3 chords unchanged) ✓")
+        print(f"      swing16: offbeat 0.75s → 0.8s (+50ms) ✓")
+        print(f"      strength 0=noop, 0.5=half (0.025s), 1.0=full (0.05s) ✓")
+        print(f"      ratio 0.5=直拍无偏移 ✓")
+        print(f"      ChordConfig.apply_groove: 默认 False, opt-in ✓")
+        print(f"      end-to-end: quantize → groove 串接 (3 on-beat chords) ✓")
+
+        print("\n✅ E2E smoke test PASSED (v0.4.9)")
     return 0
 
 
