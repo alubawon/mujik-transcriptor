@@ -27,7 +27,7 @@ def main() -> int:
     fixture_path = repo_root / "tests" / "fixtures" / "synthetic_5s.wav"
 
     # 1. 生成 wav
-    print(f"[1/17] generate synthetic wav → {fixture_path}")
+    print(f"[1/18] generate synthetic wav → {fixture_path}")
     sample_rate = 44100
     duration = 5.0
     t = np.linspace(0, duration, int(sample_rate * duration), endpoint=False)
@@ -43,10 +43,10 @@ def main() -> int:
     # 2. 准备 output dir
     with tempfile.TemporaryDirectory(prefix="mujik_smoke_") as tmp:
         out_dir = Path(tmp)
-        print(f"[2/17] output dir: {out_dir}")
+        print(f"[2/18] output dir: {out_dir}")
 
         # 3. mock 所有重 adapter，写 fake stems
-        print("[3/17] mock heavy adapters...")
+        print("[3/18] mock heavy adapters...")
 
         def fake_separate(input_path, stems_dir, config=None):
             stems_dir = Path(stems_dir)
@@ -89,7 +89,7 @@ def main() -> int:
             return []
 
         # 4. 跑 pipeline
-        print("[4/17] run pipeline (mocked)...")
+        print("[4/18] run pipeline (mocked)...")
         sys.path.insert(0, str(repo_root / "src"))
 
         from mujik.config.schema import (
@@ -121,7 +121,7 @@ def main() -> int:
             project = Pipeline(cfg).run()
 
         # 5. 验证产物
-        print("[5/17] verify pipeline outputs...")
+        print("[5/18] verify pipeline outputs...")
         midi_path = out_dir / "project.mid"
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
@@ -140,7 +140,7 @@ def main() -> int:
         assert n_notes >= 4, f"expected >= 4 notes, got {n_notes}"
 
         meta = json.loads(meta_path.read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0", "0.5.1")
         assert meta["rhythm_enabled"] is True
         print(f"      project.json: {meta}")
 
@@ -155,7 +155,7 @@ def main() -> int:
         print(f"      time_signatures.json: {len(time_sigs)} segment(s), first={time_sigs[0]['sig']}")
 
         # 6. 跑 mujik quantize 验证后处理（v0.2.3 新增）
-        print("[6/17] run mujik quantize (v0.2.3)...")
+        print("[6/18] run mujik quantize (v0.2.3)...")
         from mujik.cli import main as cli_main
         rc = cli_main([
             "quantize",
@@ -176,7 +176,7 @@ def main() -> int:
         )
 
         # 7. 跑 mujik render 验证 MusicXML + SVG 输出（v0.2.4 新增）
-        print("[7/17] run mujik render (v0.2.4)...")
+        print("[7/18] run mujik render (v0.2.4)...")
         from mujik.cli import main as cli_main2
         from mujik.midi.io import read_midi_to_project
         from mujik.score.builder import build_musicxml
@@ -224,7 +224,7 @@ def main() -> int:
             print(f"      project.pdf: skipped ({e})")
 
         # 8. v0.4.1 验证：MusicXML 含 <bend> + <harmony>；v0.4.3 验证：release 模式
-        print("[8/17] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
+        print("[8/18] verify v0.4.1 <bend> + <harmony> + v0.4.3 release curve...")
         from mujik.config.schema import RenderConfig
         from mujik.midi.model import ChordEvent
 
@@ -287,7 +287,7 @@ def main() -> int:
         print(f"      v0.4.3 release curve: {n_bend_tags} <bend> siblings + <release/> marker")
 
         # 9. v0.4.2 验证：muscriptor multitrack adapter 配置 + 解析
-        print("[9/17] verify v0.4.2 muscriptor adapter...")
+        print("[9/18] verify v0.4.2 muscriptor adapter...")
         from mujik.config.schema import TranscribeConfig
         from mujik.transcribe.muscriptor_adapter import (
             MuscriptorAdapterError,
@@ -324,7 +324,7 @@ def main() -> int:
         print(f"      muscriptor adapter: {len(VALID_MUSCRIPTOR_MODELS)} valid models, subprocess-based")
 
         # 10. v0.4.3 验证：连续 bend 曲线渲染
-        print("[10/17] verify v0.4.3 continuous bend curve rendering...")
+        print("[10/18] verify v0.4.3 continuous bend curve rendering...")
         from mujik.score.bend import (
             BendPoint,
             build_bend_elements,
@@ -376,7 +376,7 @@ def main() -> int:
         print(f"      end-to-end MusicXML: shape=\"curved\" + bend+release ✓")
 
         # 11. v0.4.4 验证：自动和弦检测（madmom subprocess）
-        print("[11/17] verify v0.4.4 automatic chord detection...")
+        print("[11/18] verify v0.4.4 automatic chord detection...")
         from mujik.chord.madmom_adapter import (
             MADMOM_CHORD_TIMEOUT_DEFAULT,
             MadmomChordAdapterError,
@@ -455,7 +455,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> ✓")
 
         # 12. v0.4.5 验证：chord quantize 到 bar/beat
-        print("[12/17] verify v0.4.5 chord quantize to bar/beat...")
+        print("[12/18] verify v0.4.5 chord quantize to bar/beat...")
         from mujik.chord.quantize import (
             quantize_chord_track,
             snap_chord_to_grid,
@@ -543,7 +543,7 @@ def main() -> int:
         print(f"      end-to-end: raw 100ms → quantized 0.5s beat grid ✓")
 
         # 13. v0.4.6 验证：ChordEvent hardening 验证器
-        print("[13/17] verify v0.4.6 ChordEvent hardening validator...")
+        print("[13/18] verify v0.4.6 ChordEvent hardening validator...")
         from mujik.midi.model import (
             ALLOWED_QUALITIES_BY_VOCAB,
         )
@@ -631,7 +631,7 @@ def main() -> int:
         print(f"      end-to-end: harded chord → MusicXML <kind> ✓")
 
         # 14. v0.4.7 验证：find_chord_at_time O(log n) bisect
-        print("[14/17] verify v0.4.7 find_chord_at_time bisect optimization...")
+        print("[14/18] verify v0.4.7 find_chord_at_time bisect optimization...")
         from mujik.score.harmony import find_chord_at_time as find_chord_v47
 
         # 基础 case：与 v0.4.1 行为兼容
@@ -708,7 +708,7 @@ def main() -> int:
         print(f"      end-to-end: chord_track → MusicXML <harmony> via bisect ✓")
 
         # 15. v0.4.8 验证：BTC-HCQT 7th/9th/11th/13th 延伸和弦
-        print("[15/17] verify v0.4.8 BTC-HCQT extended chord vocabulary...")
+        print("[15/18] verify v0.4.8 BTC-HCQT extended chord vocabulary...")
         from mujik.chord.btc_hcqt_adapter import (
             BTC_HCQT_TIMEOUT_DEFAULT,
             BtcHcqtAdapterError,
@@ -827,7 +827,7 @@ def main() -> int:
         print(f"      end-to-end: BTC chord → MusicXML <kind>major-seventh/hdim7</kind> ✓")
 
         # 16. v0.4.9 验证：chord track groove 联动 (swing)
-        print("[16/17] verify v0.4.9 chord track groove linking...")
+        print("[16/18] verify v0.4.9 chord track groove linking...")
         from mujik.chord.groove import apply_groove_to_chord_track
 
         # 构造拍号段
@@ -930,7 +930,7 @@ def main() -> int:
         print(f"      end-to-end: quantize → groove 串接 (3 on-beat chords) ✓")
 
         # 17. v0.5.0 验证：5-genre benchmark 框架
-        print("[17/17] verify v0.5.0 5-genre benchmark framework...")
+        print("[17/18] verify v0.5.0 5-genre benchmark framework...")
         from mujik.benchmarks import (
             BENCHMARK_GENRES,
             BenchmarkSample,
@@ -1039,7 +1039,84 @@ def main() -> int:
         print(f"      runner: {report.n_samples} samples aggregated per genre ✓")
         print(f"      report: markdown table + JSON dump ✓")
 
-        print("\n✅ E2E smoke test PASSED (v0.5.0)")
+        # 18. v0.5.1 验证：易用性层（一键 demo + 进度条 + README）
+        print("[18/18] verify v0.5.1 UX (demo script + progress + README)...")
+        demo_dir = out_dir / "demo"
+        demo_dir.mkdir(exist_ok=True)
+
+        # 18.1 进度条在 CI 下自动 no-op（不污染输出）
+        from mujik.pipeline_progress import PipelineProgress, _NullProgress
+        with PipelineProgress(total=8) as prog:
+            # CI 下应降级为 no-op
+            assert isinstance(prog, _NullProgress), "CI 应降级 no-op"
+            prog.advance("probe")
+            prog.advance("denoise")
+            assert prog.step_idx == 2
+        print("      progress: CI auto no-op ✓")
+
+        # 18.2 _demo_report.py 生成可读报告
+        for name in ("pop", "jazz", "metal"):
+            pd = demo_dir / name
+            pd.mkdir(exist_ok=True)
+            (pd / "project.json").write_text(json.dumps({
+                "mujik_version": "0.5.1",
+                "preset": name,
+                "separator": "demucs/htdemucs_ft",
+                "transcribe_mode": "per_stem",
+                "rhythm_enabled": True,
+                "chord_enabled": name == "jazz",
+                "chord_backend": "madmom",
+                "chord_quantize_enabled": name == "jazz",
+                "chord_groove_enabled": False,
+                "chord_groove_template": "straight",
+                "denoise_enabled": False,
+                "denoise_backend": "none",
+                "score_features": ["bend", "harmony"],
+            }, ensure_ascii=False))
+            (pd / "beats.json").write_text(json.dumps({
+                "bpm": 120.0, "beats": [0.0, 0.5], "downbeats": [0.0],
+            }))
+            (pd / "time_signatures.json").write_text(json.dumps([
+                {"start": 0.0, "end": 1.0, "sig": [4, 4], "confidence": 1.0, "source": "h"},
+            ]))
+            if name == "jazz":
+                (pd / "chords.json").write_text(json.dumps([
+                    {"start": 0.0, "end": 1.0, "root": "Cmaj7", "quality": "maj7", "bass": None},
+                ]))
+
+        import subprocess
+        r = subprocess.run(
+            [sys.executable, str(repo_root / "scripts" / "_demo_report.py"), str(demo_dir)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, f"_demo_report.py failed: {r.stderr}"
+        report_md = r.stdout
+        assert "**pop**" in report_md
+        assert "**jazz**" in report_md
+        assert "**metal**" in report_md
+        assert "## Summary" in report_md
+        # 写 out/demo_report.md
+        (demo_dir / "demo_report.md").write_text(report_md, encoding="utf-8")
+        print(f"      demo report: {len(report_md)} chars, 3 presets covered ✓")
+
+        # 18.3 README quickstart 段存在
+        readme = (repo_root / "README.md").read_text(encoding="utf-8")
+        assert "5 分钟跑通" in readme or "Docker 镜像" in readme
+        assert "v0.5.0" in readme  # 状态段
+        assert "调用示例" in readme
+        assert "scripts/run_demo.sh" in readme  # 一键 demo 引用
+        print("      README: quickstart + 调用示例 + demo 引用 ✓")
+
+        # 18.4 pipeline.py 集成进度条（version 0.5.1）
+        from mujik.pipeline import (
+            PIPELINE_TOTAL_STEPS_PERSTEM,
+            PIPELINE_TOTAL_STEPS_MULTITRACK,
+        )
+        assert PIPELINE_TOTAL_STEPS_PERSTEM > 0
+        assert PIPELINE_TOTAL_STEPS_MULTITRACK > 0
+        print(f"      pipeline constants: per_stem={PIPELINE_TOTAL_STEPS_PERSTEM} multitrack={PIPELINE_TOTAL_STEPS_MULTITRACK} ✓")
+
+        print("\n✅ E2E smoke test PASSED (v0.5.1)")
     return 0
 
 
