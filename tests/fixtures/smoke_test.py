@@ -1116,15 +1116,18 @@ def main() -> int:
         assert PIPELINE_TOTAL_STEPS_MULTITRACK > 0
         print(f"      pipeline constants: per_stem={PIPELINE_TOTAL_STEPS_PERSTEM} multitrack={PIPELINE_TOTAL_STEPS_MULTITRACK} ✓")
 
-        # 18.5 demo 脚本必须拒绝无参（v0.5.1 修：不再用合成 wav 默认）
+        # 18.5 demo 脚本：默认用 buhee/buhee.mp3（v0.5.1 修 2）
+        # 仓库内 buhee.mp3 存在时，无参走默认；这里只验证 header + 显式错误路径
+        script_text = (repo_root / "scripts" / "run_demo.sh").read_text()
+        assert "buhee/buhee.mp3" in script_text, "脚本必须以 buhee 为默认"
+        # 显式传入不存在的文件应清晰报错
         r = subprocess.run(
-            ["bash", str(repo_root / "scripts" / "run_demo.sh")],
+            ["bash", str(repo_root / "scripts" / "run_demo.sh"), "/nonexistent/x.wav"],
             capture_output=True, text=True, timeout=10,
         )
-        assert r.returncode == 2, f"无参应 exit 2，实际 {r.returncode}"
-        assert "必须" in r.stdout
-        assert "真实" in r.stdout
-        print("      demo script: rejects no-args with helpful message ✓")
+        assert r.returncode == 1
+        assert "❌" in r.stdout
+        print("      demo script: buhee default + clear error on missing ✓")
 
         # 18.6 ghcr URL 必须是真实 org（v0.5.1 修：your-org → alubawon）
         readme_text = readme
