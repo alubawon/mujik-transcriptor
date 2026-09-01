@@ -43,7 +43,7 @@ def _summarize_run(run_dir: Path, out_root: Path) -> dict:
         "chord_backend": meta.get("chord_backend", "?"),
         "chord_quantize_enabled": meta.get("chord_quantize_enabled", False),
         "score_features": meta.get("score_features", []),
-        "bpm": beats.get("bpm"),
+        "bpm": round(beats["bpm"], 1) if isinstance(beats.get("bpm"), (int, float)) else beats.get("bpm"),
         "n_beats": len(beats.get("beats", [])),
         "n_downbeats": len(beats.get("downbeats", [])),
         "n_chords": len(chords) if chords else 0,
