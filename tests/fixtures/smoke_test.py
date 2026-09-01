@@ -2,7 +2,7 @@
 
 跑：
 1. 生成合成测试 wav
-2. 跑 Pipeline.run() 但 mock 掉 demucs/basic-pitch/adtof
+2. 跑 Pipeline.run() 但 mock 掉 demucs/basic-pitch/drumscript
 3. 验证 out/project.mid 存在 + pretty-midi 可解析
 4. 跑 mujik quantize 验证 out/quantize_report.json
 5. 跑 mujik render 验证 out/project.svg 存在

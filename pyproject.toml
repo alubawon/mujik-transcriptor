@@ -45,9 +45,12 @@ midi = [
   "pretty-midi>=0.2.10",
   "music21>=10.0",
 ]
+# v0.5.2: torch 上限 2.4 → 2.9，与 drumscript（torch>=2.4,<2.9）取交集，
+# 避免 [separate]+[transcribe-drumscript] 同时安装时解算冲突。
+# demucs 4.x 在 torch 2.4+ 下工作正常（ml 镜像 E2E 验证）。
 separate = [
-  "torch>=2.1,<2.4",
-  "torchaudio>=2.1,<2.4",
+  "torch>=2.1,<2.9",
+  "torchaudio>=2.1,<2.9",
   "demucs>=4.0",
 ]
 transcribe = [
@@ -55,11 +58,14 @@ transcribe = [
   "librosa>=0.10",
   "numpy>=1.26,<2.0",
 ]
-# adtof 需手动从 GitHub 装（仅 GitHub 可用；国内可能联不通 GitHub）：
-#   uv pip install "adtof @ git+https://github.com/Music-and-Culture-Technology-Lab/Adtof.git"
-# 测试用 mock 替代；实际 E2E 跑前再装。
-transcribe-adtof = [
-  "adtof @ git+https://github.com/Music-and-Culture-Technology-Lab/Adtof.git",
+# v0.5.2: DrumScript 鼓转录（Apache-2.0）
+# 规则引擎（librosa 频谱 + 物理规则分类），无模型权重 → 无权重孤儿风险；
+# 规则构建素材以技术死亡金属为主。替代 adtof：
+#   - 原仓库 git URL（MCT-Lab/Adtof）404 死链
+#   - 原仓库 LICENSE 实为 CC-BY-NC-SA（非商用，违反主线许可证策略）
+#   - PyTorch 移植 xavriley/ADTOF-pytorch 无 LICENSE
+transcribe-drumscript = [
+  "drumscript>=0.2.1",
 ]
 transcribe-tf = [
   "basic-pitch>=0.4",
@@ -99,7 +105,7 @@ benchmark = [
   "numpy>=1.26,<2.0",
 ]
 all = [
-  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,preprocess-denoise,render,chord,benchmark]",
+  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,transcribe-drumscript,preprocess-denoise,render,chord,benchmark]",
 ]
 dev = [
   "pytest>=7.4",

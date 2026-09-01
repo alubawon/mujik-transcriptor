@@ -4,7 +4,7 @@ v0.4.1 路由：
   vocals → basic_pitch_adapter
   bass   → basic_pitch_adapter
   other  → basic_pitch_adapter
-  drums  → adtof_adapter
+  drums  → drumscript_adapter (v0.5.2；此前 adtof 因死链+CC-BY-NC-SA 权重弃用)
   piano  → bytedance-piano adapter（v0.4.0 已实现）
   guitar → NotImplementedError（v0.5+ Apollo，仓库 TBD）
 """
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from loguru import logger
 
-from mujik.config.schema import AdtofConfig, BasicPitchConfig, TranscribeConfig
+from mujik.config.schema import BasicPitchConfig, DrumScriptConfig, TranscribeConfig
 from mujik.midi.model import Note, StemName
 from mujik.separate.model import Stem
 
@@ -57,12 +57,11 @@ def transcribe_stem(
             ),
             out_dir=out_dir,
         )
-    if adapter_name == "adtof":
-        from mujik.transcribe.adtof_adapter import transcribe_drums_with_adtof
-        return transcribe_drums_with_adtof(
+    if adapter_name == "drumscript":
+        from mujik.transcribe.drumscript_adapter import transcribe_drums_with_drumscript
+        return transcribe_drums_with_drumscript(
             stem.audio_path,
-            config=AdtofConfig(
-                onset_threshold=cfg.velocity_threshold / 127.0,
+            config=DrumScriptConfig(
                 min_note_length_ms=cfg.min_note_length_ms,
             ),
             out_dir=out_dir,

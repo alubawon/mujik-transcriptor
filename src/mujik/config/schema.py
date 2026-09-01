@@ -56,7 +56,8 @@ class TranscribeConfig(BaseModel):
 
     vocals: str = "basic-pitch"
     bass: str = "basic-pitch"
-    drums: str = "adtof"
+    # v0.5.2: drums 默认 adtof → drumscript（adtof 原仓库死链 + CC-BY-NC-SA 权重）
+    drums: str = "drumscript"
     piano: str = "bytedance-piano"
     guitar: str = "apollo"
     other: str = "basic-pitch"
@@ -79,13 +80,14 @@ class BasicPitchConfig(BaseModel):
     timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
 
-class AdtofConfig(BaseModel):
-    """adtof 配置（subprocess 调用）。"""
+class DrumScriptConfig(BaseModel):
+    """DrumScript 鼓转录配置（subprocess 调用，v0.5.2 替代 adtof）。"""
 
-    model: Literal["adtof-5class", "adtof-9class"] = "adtof-5class"
-    onset_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    # DrumScript 不输出逐击力度（其 MIDI 导出固定 velocity=100），统一用它
+    default_velocity: int = Field(default=100, ge=1, le=127)
     min_note_length_ms: float = Field(default=50.0, ge=10.0, le=1000.0)
-    device: Literal["cpu", "cuda"] = "cpu"
+    # 同一 instrument 相邻 onset 小于此间隔视为同一击打的重复检测，去重
+    min_onset_interval_ms: float = Field(default=40.0, ge=0.0, le=500.0)
     timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
 
@@ -249,7 +251,7 @@ __all__ = [
     "LoudnormConfig",
     "TranscribeConfig",
     "BasicPitchConfig",
-    "AdtofConfig",
+    "DrumScriptConfig",
     "RhythmConfig",
     "ChordConfig",
     "QuantizeConfig",

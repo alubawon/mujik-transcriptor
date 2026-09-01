@@ -48,11 +48,11 @@ RUN set -euxo pipefail; \
     UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
     uv pip install --no-cache "Cython" "numpy==1.26.4" "hatchling"
 
-# 3) demucs + transcribe + benchmark
+# 3) demucs + transcribe + drumscript + benchmark
 RUN set -euxo pipefail; \
     . /app/.venv/bin/activate; \
     UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
-    uv pip install --no-cache ".[separate,transcribe,transcribe-tf,benchmark]"
+    uv pip install --no-cache ".[separate,transcribe,transcribe-tf,transcribe-drumscript,benchmark]"
 
 # 4) madmom（单独装；失败即中止——主线 chord 功能必需）
 #    madmom 0.16 兼容补丁（装后执行）：
@@ -71,18 +71,15 @@ RUN set -euxo pipefail; \
         -e 's/np\.int\b/int/g' \
         {} +
 
-# 4.5) adtof（drums 转录）——暂不装：
-#   pyproject 里的 URL（Music-and-Culture-Technology-Lab/Adtof）在 GitHub 不存在，
-#   adapter 的 import 路径 adtof.model.pytorch.predict 与真实仓库（MZehren/ADTOF
-#   为 TF 实现；xavriley/ADTOF-pytorch 为包名 adtof_pytorch）均不匹配。
-#   drums 转录在 pipeline 中 fail-soft（日志明示 "adtof not installed"）。
-#   后续版本：对接 xavriley/ADTOF-pytorch 重写 adtof_adapter。
+# 4.5) v0.5.2 起 drums 转录用 DrumScript（transcribe-drumscript extra，见步骤 3），
+#      替代 adtof（原仓库 git URL 死链 + LICENSE 实为 CC-BY-NC-SA + 移植版无 LICENSE）。
 
 # 5) 硬校验：任何一个 import 失败 → build 失败
 RUN set -euxo pipefail; \
     . /app/.venv/bin/activate; \
     python -c "import demucs; print('demucs OK')"; \
     python -c "import basic_pitch; print('basic_pitch OK')"; \
+    python -c "import drumscript; print('drumscript OK')"; \
     python -c "import mir_eval; print('mir_eval OK')"; \
     python -c "import madmom; print('madmom OK')"; \
     python -c "import torch; print('torch', torch.__version__)"

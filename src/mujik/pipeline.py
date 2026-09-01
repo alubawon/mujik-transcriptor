@@ -6,7 +6,7 @@ v0.2.2 完整流程：
   2.5 节拍/下拍/BPM 跟踪（madmom）→ beats.json
   2.6 时间签名推断（启发式）→ time_signatures.json
   3. Demucs v4 4-stem 源分离
-  4. 按 stem 路由到转录 adapter（basic-pitch / adtof）
+  4. 按 stem 路由到转录 adapter（basic-pitch / drumscript）
   5. 写入 Project.tracks
   6. 写出 out/project.mid（含真实 tempo + time_signature 事件）
   7. 写 out/project.json 元数据

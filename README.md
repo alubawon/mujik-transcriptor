@@ -11,7 +11,7 @@
 | Stream | 最近版本 | 状态 |
 |---|---|---|
 | 源分离 (Demucs v4 4-stem / 6-stem / Roformer) | v0.4.0 | ✅ |
-| 转录 (basic-pitch / adtof / bytedance-piano / multitrack) | v0.4.2 | ✅ |
+| 转录 (basic-pitch / drumscript / bytedance-piano / multitrack) | v0.5.2 | ✅ |
 | 节拍/下拍 (madmom CRNN) | v0.2.2 | ✅ |
 | 时间签名（启发式 4/4 + change CLI）| v0.2.3 | ✅ |
 | 自动和弦（madmom + BTC-HCQT 延伸）| v0.4.8 | ✅ |
@@ -104,7 +104,7 @@ demo_out/
 WAV/FLAC/MP3
   → pyloudnorm (响度归一)
   → Demucs v4 htdemucs_ft (4-stem 源分离)
-  → basic-pitch / adtof / bytedance / multitrack (各轨 MIDI 转录)
+  → basic-pitch / drumscript / bytedance / multitrack (各轨 MIDI 转录)
   → madmom CRNN (节拍/下拍) + 启发式 (时间签名)
   → madmom / BTC-HCQT (和弦识别，opt-in)
   → quantize + chord quantize + chord groove (后处理)
@@ -121,7 +121,7 @@ WAV/FLAC/MP3
 |---|---|---|
 | 源分离 | Demucs v4 htdemucs_ft | ⭐ v0.4.0 6-stem |
 | 旋律/贝斯/other 转录 | basic-pitch | ✅ v0.2.1 |
-| 鼓转录 | adtof | ✅ v0.2.1 |
+| 鼓转录 | DrumScript (Apache-2.0, 规则引擎无权重, metal 专精) | ✅ v0.5.2（替代 adtof：死链 + CC-BY-NC-SA 权重） |
 | 钢琴转录 | bytedance-piano | ✅ v0.4.0 |
 | 节拍/下拍 | madmom CRNN | ✅ v0.2.2 |
 | 时间签名 | 启发式 4/4 | ✅ v0.2.3 |
@@ -293,4 +293,4 @@ WIP。本地 benchmark 是当前最重要的环节：见 [research.md §6](docs/
 - BTC-ISMIR19：Park et al., 2019 ([paper](https://program.ismir.net/2019/ISMIR_53.html))
 - MuScriptor：Kyutai + Mirelo, [muscriptor](https://github.com/muscriptor/muscriptor)
 - basic-pitch：[Spotify Research](https://github.com/spotify/basic-pitch)
-- adtof / ADTOF dataset：Zehren et al., 2021, [arXiv:2107.05535](https://arxiv.org/abs/2107.05535)
+- DrumScript：[DrumScript/DrumScript](https://github.com/DrumScript/DrumScript)（Apache-2.0；v0.5.2 起替代 adtof，后者权重 CC-BY-NC-SA + 原仓库死链）
