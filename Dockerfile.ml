@@ -12,8 +12,11 @@ FROM mujik-transcriptor:${BASE_TAG}
 
 USER root
 
-# 把当前 src 烧进镜像（覆盖 base 里旧版 mujik wheel；no-deps 只重装自身）
+# 把当前 src + pyproject.toml 烧进镜像（覆盖 base 里旧版 mujik wheel；no-deps 只重装自身）。
+# pyproject.toml 必须一起覆盖：否则后面 `uv pip install ".[extras]"` 用的是 base 镜像里
+# 烘焙的旧 pyproject，新增 extra 会被 uv 以 "unknown extra" 警告静默跳过（exit 0 不装包）。
 COPY --chown=mujik:mujik src ./src
+COPY --chown=mujik:mujik pyproject.toml README.md ./
 RUN set -euxo pipefail; \
     . /app/.venv/bin/activate; \
     UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \

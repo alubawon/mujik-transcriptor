@@ -119,15 +119,20 @@
 
 ### 2.3 鼓转录
 
+> **2026-09 复查更正**：本表当年标的 adtof "MIT" 有误——原仓库 MZehren/ADTOF 实为
+> CC-BY-NC-SA 4.0（非商用），且 `Music-and-Culture-Technology-Lab/Adtof` URL 已 404，
+> PyTorch 移植 xavriley/ADTOF-pytorch 无 LICENSE。v0.5.2 起主线改用 DrumScript（下表）。
+
 | 工具 | 输出类别 | 许可证 | 训练集 | 推荐 |
 |---|---|---|---|---|
-| **adtof** | 5 类 | MIT | ADTOF (RockBand 谱面) | ⭐ 首选 / 🧪 待验证 |
+| **DrumScript** | kick/snare/hh open+closed/3 tom/crash/ride | Apache-2.0 | 无（规则引擎，素材以技术死亡金属为主） | ⭐ v0.5.2 主线 |
+| ~~adtof~~ | 5 类 | CC-BY-NC-SA（原表误标 MIT） | ADTOF (RockBand 谱面) | ❌ 弃用：死链 + NC + 移植版无 LICENSE |
 | **Omnizart (drum module)** | 多类 | MIT | A2MD | 🧪 备选 |
-| **DrumTransformer** | onset + class | MIT | 多集合并 | 🧪 备选（较新） |
+| YODO (YOLOv4) | 11 类 | MIT | E-GMD | 🧪 备选（单人项目停更风险） |
 
 **已知风险**：
 - ADTOF 训练集来自 RockBand 谱面，对真实金属失真、双底鼓 blast beat、ghost note 鲁棒性未交叉验证
-- 本次研究候选主张中 ADTOF 全部被驳回，是高风险节点
+- DrumScript 为 alpha 规则引擎：速度优先于准确率，jazz/funk 鼓（ghost note 密集场景）官方自述准确率一般；kick 偏少 / hi-hat 偏多（buhee 实测 67 kick vs 1043 closed-hh）
 
 ### 2.4 节拍/下拍跟踪
 
