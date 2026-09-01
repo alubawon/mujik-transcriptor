@@ -1,0 +1,93 @@
+# Dockerfile.ml —— 完整 ML 栈镜像（基于 dev-v0.5.1 加装 separate/chord/transcribe extras）
+#
+# 注意：
+# - demucs 4.x 依赖 sphn (Rust/maturin)，aarch64 无预编译 wheel → 必须装 Rust toolchain
+# - 所有 RUN 都 set -o pipefail：任何一步失败立刻中止 build（不静默吞错）
+#
+# 用法：
+#   docker build -f Dockerfile.ml -t mujik-transcriptor:dev-v0.5.1-ml --build-arg BASE_TAG=dev-v0.5.1 .
+#
+ARG BASE_TAG=dev-v0.5.1
+FROM mujik-transcriptor:${BASE_TAG}
+
+USER root
+
+# 把当前 src 烧进镜像（覆盖 base 里旧版 mujik wheel；no-deps 只重装自身）
+COPY --chown=mujik:mujik src ./src
+RUN set -euxo pipefail; \
+    . /app/.venv/bin/activate; \
+    UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+    uv pip install --no-cache --no-deps .
+
+# 0) 系统库：pkg-config + libopus（sphn→audiopus_sys 优先链接系统 opus，
+#    跳过 CMake 源码编译；CMake 4.x 已移除 <3.5 兼容，加 policy 开关兜底）
+RUN set -euxo pipefail; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends pkg-config libopus-dev; \
+    rm -rf /var/lib/apt/lists/*
+
+ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
+
+# 1) Rust toolchain（sphn 编译需要；用 tuna 镜像加速）
+ENV RUSTUP_HOME=/usr/local/rustup \
+    CARGO_HOME=/usr/local/cargo \
+    RUSTUP_DIST_SERVER=https://mirrors.tuna.tsinghua.edu.cn/rustup \
+    RUSTUP_UPDATE_ROOT=https://mirrors.tuna.tsinghua.edu.cn/rustup/rustup \
+    PATH=/usr/local/cargo/bin:${PATH}
+
+RUN set -euxo pipefail; \
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs -o /tmp/rustup-init.sh; \
+    sh /tmp/rustup-init.sh -y --default-toolchain stable --profile minimal --no-modify-path; \
+    rustc --version; cargo --version; \
+    rm -f /tmp/rustup-init.sh
+
+# 2) Cython / numpy / hatchling（madmom 编译需要 Cython；
+#    后续 --no-build-isolation 装 .[chord] 时 mujik 自身需要 hatchling）
+RUN set -euxo pipefail; \
+    . /app/.venv/bin/activate; \
+    UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+    uv pip install --no-cache "Cython" "numpy==1.26.4" "hatchling"
+
+# 3) demucs + transcribe + benchmark
+RUN set -euxo pipefail; \
+    . /app/.venv/bin/activate; \
+    UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+    uv pip install --no-cache ".[separate,transcribe,transcribe-tf,benchmark]"
+
+# 4) madmom（单独装；失败即中止——主线 chord 功能必需）
+#    madmom 0.16 兼容补丁（装后执行）：
+#    a) `from collections import MutableSequence`（py3.10+ 移除）→ collections.abc
+#    b) `np.float` / `np.int`（numpy 1.24+ 移除）→ 内建 float / int
+#       （\b 保证不误伤 np.float32 / np.float64）
+#       注：Cython 编译产物（ml/hmm .so）里的 np.int 由 wrapper 运行时 monkey-patch 兜底
+RUN set -euxo pipefail; \
+    . /app/.venv/bin/activate; \
+    UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
+    uv pip install --no-cache --no-build-isolation ".[chord]"; \
+    find /app/.venv/lib/python3.11/site-packages/madmom -name '*.py' \
+      -exec sed -i \
+        -e 's/from collections import MutableSequence/from collections.abc import MutableSequence/g' \
+        -e 's/np\.float\b/float/g' \
+        -e 's/np\.int\b/int/g' \
+        {} +
+
+# 4.5) adtof（drums 转录）——暂不装：
+#   pyproject 里的 URL（Music-and-Culture-Technology-Lab/Adtof）在 GitHub 不存在，
+#   adapter 的 import 路径 adtof.model.pytorch.predict 与真实仓库（MZehren/ADTOF
+#   为 TF 实现；xavriley/ADTOF-pytorch 为包名 adtof_pytorch）均不匹配。
+#   drums 转录在 pipeline 中 fail-soft（日志明示 "adtof not installed"）。
+#   后续版本：对接 xavriley/ADTOF-pytorch 重写 adtof_adapter。
+
+# 5) 硬校验：任何一个 import 失败 → build 失败
+RUN set -euxo pipefail; \
+    . /app/.venv/bin/activate; \
+    python -c "import demucs; print('demucs OK')"; \
+    python -c "import basic_pitch; print('basic_pitch OK')"; \
+    python -c "import mir_eval; print('mir_eval OK')"; \
+    python -c "import madmom; print('madmom OK')"; \
+    python -c "import torch; print('torch', torch.__version__)"
+
+USER mujik
+
+ENTRYPOINT ["/app/.venv/bin/mujik"]
+CMD ["--help"]

@@ -46,6 +46,32 @@ def check_demucs_available() -> bool:
         return False
 
 
+def _resolve_device(device: str) -> str:
+    """校验 device 可用性；cuda 请求但环境无 CUDA 时显式回退 cpu。
+
+    默认配置 device="cuda" 是给 GPU 生产环境的；CPU-only 机器（如 macOS
+    容器）会直接报 "no CUDA GPUs available"。这里不静默：打 warning 日志。
+    """
+    if device != "cuda":
+        return device
+    try:
+        result = subprocess.run(
+            [sys.executable, "-c",
+             "import torch; print(int(torch.cuda.is_available()))"],
+            capture_output=True, text=True, timeout=60,
+        )
+        cuda_ok = result.returncode == 0 and result.stdout.strip() == "1"
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        cuda_ok = False
+    if not cuda_ok:
+        logger.warning(
+            "device=cuda requested but CUDA is not available in this "
+            "environment; falling back to cpu"
+        )
+        return "cpu"
+    return "cuda"
+
+
 def separate_with_demucs(
     input_path: str | Path,
     out_dir: str | Path,
@@ -66,6 +92,7 @@ def separate_with_demucs(
         FileNotFoundError: 输入文件不存在
     """
     cfg = config or SourceSeparationConfig()
+    device = _resolve_device(cfg.device)
     input_path = Path(input_path)
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -78,16 +105,17 @@ def separate_with_demucs(
         input=input_path,
         model=cfg.model,
         variant=cfg.variant,
-        device=cfg.device,
+        device=device,
         precision=cfg.precision,
     )
 
     # demucs CLI: python -m demucs -n htdemucs_ft --device cuda --out out_dir input.wav
+    # 注意：demucs CLI 的 --segment 只接受 int（v0.5.1 修：7.5 → 7）
     cmd = [
         sys.executable, "-m", "demucs",
         "-n", cfg.variant,
-        "--device", cfg.device,
-        "--segment", str(cfg.segment_length),
+        "--device", device,
+        "--segment", str(int(cfg.segment_length)),
         "--overlap", str(cfg.overlap),
         "--jobs", str(cfg.jobs),
         "--out", str(out_dir),
@@ -107,8 +135,9 @@ def separate_with_demucs(
         raise DemucsAdapterError("Demucs timeout after 1h") from e
 
     if result.returncode != 0:
+        # 尾部截取：traceback 的真实异常在最后几行，头部多为无关 warning
         raise DemucsAdapterError(
-            f"Demucs failed (exit={result.returncode}): {result.stderr[:500]}"
+            f"Demucs failed (exit={result.returncode}): {result.stderr[-2000:]}"
         )
 
     # Demucs 输出结构：<out_dir>/<model_name>/<input_stem>/{vocals,drums,bass,other}.{wav,mp3,...}

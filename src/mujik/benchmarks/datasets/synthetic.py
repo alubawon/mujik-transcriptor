@@ -77,6 +77,22 @@ def _generate_synthetic_wav(
     return duration
 
 
+def _parse_chord_name(name: str) -> tuple[str, str]:
+    """解析 lead-sheet 风格 chord 名 → (root, quality)。
+
+    v0.5.1 修：原解析对 "Dm7"/"Cmaj7" 会切出 root="Dm"/"Cmaj"
+    （root 混入了 quality 字符，mir_eval 无法编码）。
+    长后缀优先匹配："Cmaj7"→("C","maj7"), "Dm7"→("D","m7"),
+    "G7"→("G","7"), "Am"→("A","m"), "C"→("C","")。
+    """
+    for suffix, quality in (
+        ("maj7", "maj7"), ("m7", "m7"), ("7", "7"), ("m", "m"),
+    ):
+        if name.endswith(suffix) and len(name) > len(suffix):
+            return name[: -len(suffix)], quality
+    return name, ""
+
+
 def _generate_ground_truth(
     genre: str,
     bpm: float,
@@ -94,17 +110,7 @@ def _generate_ground_truth(
     for i, ch in enumerate(progression):
         start = i * beat_dur * 4
         end = min((i + 1) * beat_dur * 4, duration)
-        # 解析 quality（"maj7"/"m7"/"7" 等）
-        # BTC 风格用 ":" 分隔；synthetic 用简单解析
-        if len(ch) >= 2 and ch[-1].isdigit():
-            root = ch[:-1]
-            quality = ch[-1] + "th" if ch[-1] == "7" else ch[-1]
-        elif ch.endswith("m"):
-            root = ch[:-1]
-            quality = "m"
-        else:
-            root = ch
-            quality = ""
+        root, quality = _parse_chord_name(ch)
         chords.append((start, end, root, quality))
 
     # notes: 1 个 melody note per beat (频率随 chord 变化)

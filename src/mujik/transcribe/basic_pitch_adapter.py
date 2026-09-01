@@ -66,19 +66,23 @@ def transcribe_with_basic_pitch(
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # basic-pitch CLI: basic-pitch <out_dir> <input> [flags]
+    # v0.5.1 修：basic-pitch ≥0.3 的 flag 是全称（--minimum-note-length 等，
+    # 原 --min-note-length 等缩写不存在 → exit 2 usage error）；
+    # 且 --save-note-events 默认 False，不加则不产出 adapter 要解析的 csv
     cmd = [
         BASIC_PITCH_CLI,
+        "--save-note-events",
         str(out_dir),
         str(audio_path),
     ]
     # 透传配置
     cmd.extend(["--onset-threshold", str(cfg.onset_threshold)])
     cmd.extend(["--frame-threshold", str(cfg.frame_threshold)])
-    cmd.extend(["--min-note-length", str(int(cfg.min_note_length_ms))])
+    cmd.extend(["--minimum-note-length", str(int(cfg.min_note_length_ms))])
     if cfg.min_frequency is not None:
-        cmd.extend(["--min-frequency", str(cfg.min_frequency)])
+        cmd.extend(["--minimum-frequency", str(cfg.min_frequency)])
     if cfg.max_frequency is not None:
-        cmd.extend(["--max-frequency", str(cfg.max_frequency)])
+        cmd.extend(["--maximum-frequency", str(cfg.max_frequency)])
 
     logger.info(
         "basic-pitch: input={input}, out_dir={out}, "
@@ -119,7 +123,8 @@ def transcribe_with_basic_pitch(
                 start = float(row["start_time_s"])
                 end = float(row["end_time_s"])
                 pitch = int(row["pitch_midi"])
-                velocity = int(round(float(row["pitch_velocity"])))
+                # v0.5.1 修：basic-pitch ≥0.3 列名是 velocity（原 pitch_velocity）
+                velocity = int(round(float(row["velocity"])))
             except (KeyError, ValueError) as e:
                 logger.warning("basic-pitch: skip malformed row {}: {}", row, e)
                 continue
@@ -130,19 +135,19 @@ def transcribe_with_basic_pitch(
             if not (0 <= velocity <= 127):
                 velocity = max(0, min(127, velocity))
 
-            # v0.4.0: 解析 pitch_bend 列（JSON list of floats in [-1, 1]）
+            # v0.5.1 修：basic-pitch ≥0.3 的 pitch_bend 是逐帧 semitone 整数
+            # 以逗号续在同一行（DictReader 把多出来的列放进 row[None]），
+            # 不再是 JSON list。semitone → mujik 的 [-1,+1] 满量程：除以 2
+            # （默认 bend range ±2 semitones）
             pitch_bend: tuple[float, ...] = ()
-            bend_str = row.get("pitch_bend", "").strip()
-            if bend_str:
+            bend_values = [row.get("pitch_bend", ""), *(row.get(None) or [])]
+            bend_values = [v for v in bend_values if v not in (None, "")]
+            if bend_values:
                 try:
-                    import json
-                    bend_list = json.loads(bend_str)
-                    if isinstance(bend_list, list):
-                        # 校验每个值
-                        pitch_bend = tuple(
-                            max(-1.0, min(1.0, float(v))) for v in bend_list
-                        )
-                except (json.JSONDecodeError, ValueError, TypeError) as e:
+                    pitch_bend = tuple(
+                        max(-1.0, min(1.0, float(v) / 2.0)) for v in bend_values
+                    )
+                except (ValueError, TypeError) as e:
                     logger.debug("basic-pitch: skip pitch_bend parse: {}", e)
 
             notes.append(Note(

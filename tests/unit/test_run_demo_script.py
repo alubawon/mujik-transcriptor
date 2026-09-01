@@ -32,10 +32,15 @@ def _bash(*args: str, timeout: int = 30) -> subprocess.CompletedProcess:
 
 class TestDefaults:
     def test_default_uses_buhee(self):
-        """无参 → 走 buhee/buhee.mp3 默认（如果存在）。"""
+        """无参 → 走 buhee/buhee.mp3 默认（如果存在）。
+
+        timeout 放宽到 300s：在装齐 ML 栈的环境（如 dev-*-ml 镜像）里，
+        run_demo.sh 会真实跑完整 pipeline（demucs 分离 3 个 preset），
+        30s 必超时；在 CI/无 ML 环境里 preset 快速失败，不受影响。
+        """
         if not DEFAULT_WAV.exists():
             pytest.skip(f"default wav missing: {DEFAULT_WAV}")
-        r = _bash()
+        r = _bash(timeout=300)
         # 接受 exit 0（成功）或 1（preset 失败但脚本继续）
         assert r.returncode in (0, 1)
         # 必须在 stdout 看见 buhee.mp3 路径
@@ -83,7 +88,8 @@ class TestSmokeIntegration:
     def test_default_runs_three_presets(self):
         if not DEFAULT_WAV.exists():
             pytest.skip(f"default wav missing: {DEFAULT_WAV}")
-        r = _bash(timeout=120)
+        # 600s：ML 栈齐全的环境里会真实跑 3 preset 完整 pipeline（CPU demucs）
+        r = _bash(timeout=600)
         assert r.returncode in (0, 1)
         assert "preset=pop" in r.stdout
         assert "preset=jazz" in r.stdout

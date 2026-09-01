@@ -37,6 +37,17 @@ def cmd_run(args: argparse.Namespace) -> int:
     pipeline = Pipeline(cfg)
     project = pipeline.run()
 
+    # v0.5.1: 输出 score.musicxml（乐谱产物；`mujik render` 可将其转 PDF/SVG）。
+    # MIDI 是核心产物，MusicXML 导出失败只降级不中断（fail-soft，日志明示）
+    try:
+        from mujik.score.builder import build_musicxml
+        score_xml = build_musicxml(project)
+        score_path = Path(args.output) / "score.musicxml"
+        score_path.write_text(score_xml, encoding="utf-8")
+        logger.info("wrote MusicXML → {}", score_path)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("MusicXML export failed: {}", e)
+
     logger.info(
         "Pipeline done: {n} tracks, {m} notes total",
         n=len(project.tracks), m=project.total_notes(),

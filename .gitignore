@@ -67,3 +67,6 @@ config/*.local.yaml
 
 # Docker
 docker-compose.override.yml
+
+# Demo 运行产物（buhee.mp3 本身是仓库内容，不忽略）
+demo_out/

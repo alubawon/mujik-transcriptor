@@ -131,3 +131,22 @@ RUN chown -R mujik:mujik /app
 USER mujik
 
 CMD ["sleep", "infinity"]
+
+# ============================================================
+# Stage 5: dev-ml —— 完整 ML 栈开发镜像（基于 gpu，装全部 deps）
+# 用于跑完整 demo（如 buhee）：demucs / madmom / muscriptor / bytedance 全部预装。
+# 不污染 dev stage；独立 tag: mujik-transcriptor:dev-v0.5.1-ml
+# ============================================================
+FROM gpu AS dev-ml
+
+USER root
+COPY --chown=mujik:mujik . /app
+RUN chown -R mujik:mujik /app
+USER mujik
+
+# 验证关键 ML 栈确实装上了（build 失败时快速暴露；注意不要用管道吞退出码）
+RUN . .venv/bin/activate && \
+    python -c "import demucs; import madmom; import muscriptor; print('ML stack OK')"
+
+ENTRYPOINT ["/app/.venv/bin/mujik"]
+CMD ["--help"]
