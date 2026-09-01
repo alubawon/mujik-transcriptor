@@ -41,34 +41,44 @@ ls out/
 
 ## 🪄 一键 demo
 
-仓库自带 `buhee/buhee.mp3` 作为 demo 音频；脚本接受路径作入参。
+仓库自带 `demo/` 下三个演示音频（buhee.mp3 / moon.mp3 / dança.mp3）。
+**无参一键跑三组合 showcase** —— 每首曲子用最像它风格的 preset：
+
+| 曲目 | preset |
+|---|---|
+| `demo/buhee.mp3` | jazz |
+| `demo/moon.mp3` | metal |
+| `demo/dança.mp3` | pop |
 
 ```bash
-# 用仓库自带 buhee.mp3 跑 demo
-./scripts/run_demo.sh buhee/buhee.mp3
+# 一键三组合 showcase（每曲一个 preset，产物在 demo_out/<曲名>/）
+./scripts/run_demo.sh
 
-# 用自己的音频
+# 用自己的音频（默认配置）
 ./scripts/run_demo.sh path/to/your_song.wav
 
+# 显式指定 preset
+./scripts/run_demo.sh demo/buhee.mp3 "" pop
+
 # 只跑前 30 秒（需 ffmpeg）
-./scripts/run_demo.sh buhee/buhee.mp3 30
+./scripts/run_demo.sh demo/buhee.mp3 30
 
-# 替换 demo 音频后再跑
-cp my_favorite.mp3 buhee/buhee.mp3 && ./scripts/run_demo.sh buhee/buhee.mp3
-
-# 多 preset 对比（opt-in，开发/评测用）
-MUJIK_DEMO_PRESETS="pop,jazz,metal" ./scripts/run_demo.sh buhee/buhee.mp3
+# 多 preset 对比（opt-in，开发/评测用；需显式传入单个音频）
+MUJIK_DEMO_PRESETS="pop,jazz,metal" ./scripts/run_demo.sh demo/buhee.mp3
 ```
 
 产物按**曲名**目录隔离（曲名 = 输入文件名去扩展名），最终产物与中间产物分层：
 
 ```
 demo_out/
-└── buhee/
-    ├── project.mid       ← 最终 MIDI ⭐
-    ├── score.musicxml    ← 最终乐谱 ⭐（verovio 可用时另有 score.pdf）
-    ├── project.json      ← 元数据
-    └── ws/               ← 中间产物（stems/tracks/beats.json/chords.json ...）
+├── buhee/   ← demo/buhee.mp3（jazz）
+├── moon/    ← demo/moon.mp3（metal）
+├── dança/   ← demo/dança.mp3（pop）
+│   ├── project.mid       ← 最终 MIDI ⭐
+│   ├── score.musicxml    ← 最终乐谱 ⭐（verovio 可用时另有 score.pdf）
+│   ├── project.json      ← 元数据
+│   └── ws/               ← 中间产物（stems/tracks/beats.json/chords.json ...）
+└── demo_report.md       ← 汇总报告
 ```
 
 多 preset 对比时：`demo_out/buhee/{pop,jazz,metal}/`（各含最终产物）+ 共享 `demo_out/buhee/ws/`，另有 `demo_out/demo_report.md` 汇总报告。
@@ -227,8 +237,8 @@ pytest tests/ -q
 # 跑最小管线（首次会下载模型权重到 ~/.cache/huggingface/）
 mujik run --input song.wav --output out/ --config config/default.yaml
 
-# 跑一键 demo（用仓库自带 buhee.mp3）
-./scripts/run_demo.sh buhee/buhee.mp3
+# 跑一键 demo（无参 = 三组合 showcase：demo/ 下三首曲子 × 各自 preset）
+./scripts/run_demo.sh
 ```
 
 ## 仓库结构

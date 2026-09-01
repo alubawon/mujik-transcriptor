@@ -1120,10 +1120,12 @@ def main() -> int:
         assert PIPELINE_TOTAL_STEPS_MULTITRACK > 0
         print(f"      pipeline constants: per_stem={PIPELINE_TOTAL_STEPS_PERSTEM} multitrack={PIPELINE_TOTAL_STEPS_MULTITRACK} ✓")
 
-        # 18.5 demo 脚本：默认用 buhee/buhee.mp3 + 曲名目录布局（修 2 + 修 5）
-        # 仓库内 buhee.mp3 存在时，无参走默认；这里只验证 header + 显式错误路径
+        # 18.5 demo 脚本：无参 showcase 三组合（demo/ 下三首曲子 × 各自 preset）+ 曲名目录布局
+        # 这里验证 header + 显式错误路径；真实跑 showcase 在 ml 镜像里做
         script_text = (repo_root / "scripts" / "run_demo.sh").read_text()
-        assert "buhee/buhee.mp3" in script_text, "脚本必须以 buhee 为默认"
+        assert "demo/buhee.mp3|jazz" in script_text, "showcase 必须含 demo/buhee.mp3×jazz"
+        assert "demo/moon.mp3|metal" in script_text, "showcase 必须含 demo/moon.mp3×metal"
+        assert "demo/dança.mp3|pop" in script_text, "showcase 必须含 demo/dança.mp3×pop"
         assert "ws/" in script_text, "脚本头部必须说明 ws 中间产物分层"
         assert "MUJIK_DEMO_PRESETS" in script_text, "多 preset 对比必须 opt-in"
         # 显式传入不存在的文件应清晰报错
