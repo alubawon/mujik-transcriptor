@@ -52,6 +52,10 @@ class Pipeline:
 
         out_dir = Path(cfg.output_dir)
         out_dir.mkdir(parents=True, exist_ok=True)
+        # v0.5.1 修 5：中间产物目录（stems/tracks/beats.json 等）；
+        # output_dir 只放最终产物（project.mid/score.musicxml/project.json）
+        ws_dir = Path(cfg.workspace_dir) if cfg.workspace_dir else out_dir / "ws"
+        ws_dir.mkdir(parents=True, exist_ok=True)
 
         # ---- 0. 顶层进度条（v0.5.1：自动 no-op on non-TTY / no tqdm）----
         # 不包裹整套代码（避免大段重缩进）；用 prog 变量，全程可用，
@@ -79,7 +83,7 @@ class Pipeline:
                 from mujik.preprocess.denoise import denoise
                 denoised_path = denoise(
                     audio_path, config=cfg.preprocess,
-                    out_path=out_dir / f"denoised_{audio_path.name}",
+                    out_path=ws_dir / f"denoised_{audio_path.name}",
                 )
                 # 后续步骤用去噪后的文件
                 audio_path_for_sep = denoised_path
@@ -97,7 +101,13 @@ class Pipeline:
 
         # ---- 2. 响度归一 ----
         if cfg.loudnorm.enabled:
-            norm_path = normalize_loudness(audio_path_for_sep, config=cfg.loudnorm)
+            # v0.5.1 修 5：确定性文件名（含时长，避免不同裁剪长度串味），
+            # 落 ws/ 而非系统 tempfile；同曲重跑不会在 /tmp 堆积随机临时文件
+            _dur_tag = f"{int(duration)}s" if duration and duration > 0 else "x"
+            norm_path = normalize_loudness(
+                audio_path_for_sep, config=cfg.loudnorm,
+                out_path=ws_dir / f"loudnorm_{audio_path.stem}_{_dur_tag}.wav",
+            )
             sep_input = norm_path
             logger.info("pipeline[2/7]: loudnorm done → {}", norm_path)
         else:
@@ -109,7 +119,7 @@ class Pipeline:
         if cfg.rhythm.enabled:
             try:
                 beat_track = track_beats_with_madmom(
-                    sep_input, config=cfg.rhythm, out_dir=out_dir,
+                    sep_input, config=cfg.rhythm, out_dir=ws_dir,
                 )
             except Exception as e:  # noqa: BLE001
                 logger.warning(
@@ -149,11 +159,11 @@ class Pipeline:
                 time_sigs = build_default_segments(duration if duration > 0 else 1.0)
 
             # 写 beats.json
-            (out_dir / "beats.json").write_text(json.dumps(
+            (ws_dir / "beats.json").write_text(json.dumps(
                 beat_track.to_dict() if beat_track else {"bpm": 120.0},
                 ensure_ascii=False, indent=2,
             ))
-            (out_dir / "time_signatures.json").write_text(json.dumps([
+            (ws_dir / "time_signatures.json").write_text(json.dumps([
                 {
                     "start": s.start_time,
                     "end": s.end_time,
@@ -180,15 +190,15 @@ class Pipeline:
                 if cfg.chord.backend == "btc-hcqt":
                     from mujik.chord.btc_hcqt_adapter import detect_chords_with_btc
                     chord_track = detect_chords_with_btc(
-                        sep_input, config=cfg.chord, out_dir=out_dir,
+                        sep_input, config=cfg.chord, out_dir=ws_dir,
                     )
                 else:  # "madmom" (default fallback for v0.4.4 compat)
                     from mujik.chord.madmom_adapter import detect_chords_with_madmom
                     chord_track = detect_chords_with_madmom(
-                        sep_input, config=cfg.chord, out_dir=out_dir,
+                        sep_input, config=cfg.chord, out_dir=ws_dir,
                     )
                 # 写 out/chords.json
-                (out_dir / "chords.json").write_text(json.dumps(
+                (ws_dir / "chords.json").write_text(json.dumps(
                     [
                         {
                             "start": c.start,
@@ -231,7 +241,7 @@ class Pipeline:
                     duration=duration,
                 )
                 # 写 out/chords_quantized.json（保留原始 + 量化两份）
-                (out_dir / "chords_quantized.json").write_text(json.dumps(
+                (ws_dir / "chords_quantized.json").write_text(json.dumps(
                     [
                         {
                             "start": c.start,
@@ -281,7 +291,7 @@ class Pipeline:
                     duration=duration,
                 )
                 # 写 out/chords_grooved.json（第三份 artifact）
-                (out_dir / "chords_grooved.json").write_text(json.dumps(
+                (ws_dir / "chords_grooved.json").write_text(json.dumps(
                     [
                         {
                             "start": c.start,
@@ -319,7 +329,7 @@ class Pipeline:
             project = transcribe_multitrack(
                 sep_input,
                 config=cfg.transcribe,
-                out_dir=out_dir / "muscriptor",
+                out_dir=ws_dir / "muscriptor",
                 model=cfg.transcribe.muscriptor_model,
             )
             # muscriptor 输出的 audio_path 改回原始 audio_path（而非去噪后）
@@ -356,7 +366,7 @@ class Pipeline:
             return project
 
         # ---- 3. Demucs 4-stem 分离（per_stem 模式）----
-        stems_out_dir = out_dir / "stems"
+        stems_out_dir = ws_dir / "stems"
         stems: Stems = separate_with_demucs(
             sep_input, stems_out_dir, config=cfg.source_separation,
         )
@@ -399,7 +409,7 @@ class Pipeline:
         for stem in stems.primary_stems():
             try:
                 notes = transcribe_stem(
-                    stem, config=cfg.transcribe, out_dir=str(out_dir / "tracks"),
+                    stem, config=cfg.transcribe, out_dir=str(ws_dir / "tracks"),
                 )
             except Exception as e:  # noqa: BLE001
                 logger.warning(

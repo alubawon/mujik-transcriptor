@@ -180,6 +180,10 @@ class PipelineConfig(BaseModel):
 
     input_path: str
     output_dir: str
+    # v0.5.1 修 5：中间产物（stems/tracks/beats.json 等）落盘目录；
+    # None 时默认 {output_dir}/ws。最终产物（project.mid/score.musicxml/
+    # project.json）始终在 output_dir，与中间产物分层
+    workspace_dir: str | None = None
     preset: Literal["pop", "jazz", "metal", "custom"] = "custom"
 
     source_separation: SourceSeparationConfig = Field(default_factory=SourceSeparationConfig)

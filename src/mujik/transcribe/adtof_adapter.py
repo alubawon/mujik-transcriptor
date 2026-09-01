@@ -21,6 +21,7 @@ GM 标准鼓映射（9-class）：
 from __future__ import annotations
 
 import csv
+import os
 import subprocess
 import sys
 import tempfile
@@ -146,7 +147,8 @@ def transcribe_drums_with_adtof(
         out_dir.mkdir(parents=True, exist_ok=True)
 
     csv_path = out_dir / f"adtof_{audio_path.stem}.csv"
-    wrapper_path = out_dir / "_adtof_wrapper.py"
+    # v0.5.1 修 5：wrapper 脚本写系统临时目录，不再泄漏进产物目录
+    wrapper_path = Path(tempfile.gettempdir()) / f"mujik_adtof_wrapper_{os.getpid()}.py"
     wrapper_path.write_text(_ADTOF_WRAPPER)
 
     duration_sec = cfg.min_note_length_ms / 1000.0

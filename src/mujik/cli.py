@@ -32,6 +32,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     # 覆盖 input/output（CLI 优先）
     cfg.input_path = args.input
     cfg.output_dir = args.output
+    if args.workspace:
+        cfg.workspace_dir = args.workspace
 
     # 跑管线
     pipeline = Pipeline(cfg)
@@ -141,8 +143,14 @@ def cmd_quantize(args: argparse.Namespace) -> int:
 
     project_dir = Path(args.project_dir)
     midi_in = project_dir / "project.mid"
-    beats_json = project_dir / "beats.json"
-    ts_json = project_dir / "time_signatures.json"
+    # v0.5.1 修 5：beats/time-signatures 中间产物在 ws/（兼容旧 flat 布局）
+    def _find_artifact(name: str) -> Path:
+        ws_path = project_dir / "ws" / name
+        if ws_path.exists():
+            return ws_path
+        return project_dir / name
+    beats_json = _find_artifact("beats.json")
+    ts_json = _find_artifact("time_signatures.json")
 
     if not midi_in.exists():
         logger.error("missing {}", midi_in)
@@ -332,6 +340,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_run = sub.add_parser("run", help="run the full pipeline")
     p_run.add_argument("--input", "-i", required=True, help="input audio file")
     p_run.add_argument("--output", "-o", required=True, help="output directory")
+    p_run.add_argument(
+        "--workspace", "-w", default=None,
+        help="intermediate artifacts dir (default: <output>/ws)",
+    )
     p_run.add_argument("--config", "-c", help="config YAML file")
     p_run.add_argument("--preset", choices=["pop", "jazz", "metal", "custom"])
     p_run.set_defaults(func=cmd_run)

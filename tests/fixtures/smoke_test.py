@@ -126,9 +126,9 @@ def main() -> int:
         assert midi_path.exists(), f"missing {midi_path}"
         meta_path = out_dir / "project.json"
         assert meta_path.exists(), f"missing {meta_path}"
-        beats_path = out_dir / "beats.json"
+        beats_path = out_dir / "ws" / "beats.json"  # v0.5.1 修 5：中间产物在 ws/
         assert beats_path.exists(), f"missing {beats_path} (v0.2.2)"
-        ts_path = out_dir / "time_signatures.json"
+        ts_path = out_dir / "ws" / "time_signatures.json"  # v0.5.1 修 5
         assert ts_path.exists(), f"missing {ts_path} (v0.2.2)"
 
         import pretty_midi
@@ -1054,9 +1054,24 @@ def main() -> int:
             assert prog.step_idx == 2
         print("      progress: CI auto no-op ✓")
 
-        # 18.2 _demo_report.py 生成可读报告
-        for name in ("pop", "jazz", "metal"):
-            pd = demo_dir / name
+        # 18.2 _demo_report.py 生成可读报告（v0.5.1 修 5：曲名目录布局）
+        # 单 preset：demo_out/<曲名>/project.json + demo_out/<曲名>/ws/
+        # 多 preset：demo_out/<曲名>/<preset>/ + 共享 demo_out/<曲名>/ws/
+        song_dir = demo_dir / "buhee"
+        song_dir.mkdir(exist_ok=True)
+        ws_dir = song_dir / "ws"
+        ws_dir.mkdir(exist_ok=True)
+        (ws_dir / "beats.json").write_text(json.dumps({
+            "bpm": 120.0, "beats": [0.0, 0.5], "downbeats": [0.0],
+        }))
+        (ws_dir / "time_signatures.json").write_text(json.dumps([
+            {"start": 0.0, "end": 1.0, "sig": [4, 4], "confidence": 1.0, "source": "h"},
+        ]))
+        (ws_dir / "chords.json").write_text(json.dumps([
+            {"start": 0.0, "end": 1.0, "root": "Cmaj7", "quality": "maj7", "bass": None},
+        ]))
+        for name in ("pop", "jazz"):
+            pd = song_dir / name
             pd.mkdir(exist_ok=True)
             (pd / "project.json").write_text(json.dumps({
                 "mujik_version": "0.5.1",
@@ -1073,16 +1088,6 @@ def main() -> int:
                 "denoise_backend": "none",
                 "score_features": ["bend", "harmony"],
             }, ensure_ascii=False))
-            (pd / "beats.json").write_text(json.dumps({
-                "bpm": 120.0, "beats": [0.0, 0.5], "downbeats": [0.0],
-            }))
-            (pd / "time_signatures.json").write_text(json.dumps([
-                {"start": 0.0, "end": 1.0, "sig": [4, 4], "confidence": 1.0, "source": "h"},
-            ]))
-            if name == "jazz":
-                (pd / "chords.json").write_text(json.dumps([
-                    {"start": 0.0, "end": 1.0, "root": "Cmaj7", "quality": "maj7", "bass": None},
-                ]))
 
         import subprocess
         r = subprocess.run(
@@ -1091,13 +1096,12 @@ def main() -> int:
         )
         assert r.returncode == 0, f"_demo_report.py failed: {r.stderr}"
         report_md = r.stdout
-        assert "**pop**" in report_md
-        assert "**jazz**" in report_md
-        assert "**metal**" in report_md
+        assert "**buhee/pop**" in report_md
+        assert "**buhee/jazz**" in report_md
         assert "## Summary" in report_md
         # 写 out/demo_report.md
         (demo_dir / "demo_report.md").write_text(report_md, encoding="utf-8")
-        print(f"      demo report: {len(report_md)} chars, 3 presets covered ✓")
+        print(f"      demo report: {len(report_md)} chars, song-layout runs covered ✓")
 
         # 18.3 README quickstart 段存在
         readme = (repo_root / "README.md").read_text(encoding="utf-8")
@@ -1116,10 +1120,12 @@ def main() -> int:
         assert PIPELINE_TOTAL_STEPS_MULTITRACK > 0
         print(f"      pipeline constants: per_stem={PIPELINE_TOTAL_STEPS_PERSTEM} multitrack={PIPELINE_TOTAL_STEPS_MULTITRACK} ✓")
 
-        # 18.5 demo 脚本：默认用 buhee/buhee.mp3（v0.5.1 修 2）
+        # 18.5 demo 脚本：默认用 buhee/buhee.mp3 + 曲名目录布局（修 2 + 修 5）
         # 仓库内 buhee.mp3 存在时，无参走默认；这里只验证 header + 显式错误路径
         script_text = (repo_root / "scripts" / "run_demo.sh").read_text()
         assert "buhee/buhee.mp3" in script_text, "脚本必须以 buhee 为默认"
+        assert "ws/" in script_text, "脚本头部必须说明 ws 中间产物分层"
+        assert "MUJIK_DEMO_PRESETS" in script_text, "多 preset 对比必须 opt-in"
         # 显式传入不存在的文件应清晰报错
         r = subprocess.run(
             ["bash", str(repo_root / "scripts" / "run_demo.sh"), "/nonexistent/x.wav"],

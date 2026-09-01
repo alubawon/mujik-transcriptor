@@ -44,7 +44,7 @@ ls out/
 仓库自带 `buhee/buhee.mp3` 作为 demo 音频；脚本接受路径作入参。
 
 ```bash
-# 用仓库自带 buhee.mp3 跑三 preset 对比
+# 用仓库自带 buhee.mp3 跑 demo
 ./scripts/run_demo.sh buhee/buhee.mp3
 
 # 用自己的音频
@@ -55,12 +55,23 @@ ls out/
 
 # 替换 demo 音频后再跑
 cp my_favorite.mp3 buhee/buhee.mp3 && ./scripts/run_demo.sh buhee/buhee.mp3
+
+# 多 preset 对比（opt-in，开发/评测用）
+MUJIK_DEMO_PRESETS="pop,jazz,metal" ./scripts/run_demo.sh buhee/buhee.mp3
 ```
 
-每次跑出 `demo_out/{pop,jazz,metal}/{project.mid, score.pdf, chords.json, ...}` + `demo_out/demo_report.md`。
+产物按**曲名**目录隔离（曲名 = 输入文件名去扩展名），最终产物与中间产物分层：
+
+```
+demo_out/
+└── buhee/
+    ├── project.mid       ← 最终 MIDI ⭐
+    ├── score.musicxml    ← 最终乐谱 ⭐（verovio 可用时另有 score.pdf）
+    ├── project.json      ← 元数据
+    └── ws/               ← 中间产物（stems/tracks/beats.json/chords.json ...）
 ```
 
-输出 `out/pop/`, `out/jazz/`, `out/metal/`，每个含 MIDI + PDF + JSON 报告。
+多 preset 对比时：`demo_out/buhee/{pop,jazz,metal}/`（各含最终产物）+ 共享 `demo_out/buhee/ws/`，另有 `demo_out/demo_report.md` 汇总报告。
 
 ## 📖 调用示例
 

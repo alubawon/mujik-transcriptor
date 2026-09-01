@@ -16,8 +16,10 @@ subprocess 模式与 adtof 一致：写临时 wrapper 脚本 → 调 madmom → 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from loguru import logger
@@ -190,7 +192,8 @@ def track_beats_with_madmom(
         out_dir.mkdir(parents=True, exist_ok=True)
 
     json_path = out_dir / f"madmom_{audio_path.stem}.json"
-    wrapper_path = out_dir / "_madmom_wrapper.py"
+    # v0.5.1 修 5：wrapper 脚本写系统临时目录，不再泄漏进产物目录
+    wrapper_path = Path(tempfile.gettempdir()) / f"mujik_madmom_wrapper_{os.getpid()}.py"
     wrapper_path.write_text(_MADMON_WRAPPER)
 
     logger.info(

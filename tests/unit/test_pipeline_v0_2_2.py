@@ -78,7 +78,7 @@ class TestRhythmEnabled:
             mock_info.return_value = MagicMock(duration=5.0, samplerate=44100)
             Pipeline(cfg).run()
 
-        beats_path = tmp_path / "out" / "beats.json"
+        beats_path = tmp_path / "out" / "ws" / "beats.json"  # v0.5.1 修 5：中间产物在 ws/
         assert beats_path.exists()
         data = json.loads(beats_path.read_text())
         assert data["bpm"] == 120.0
@@ -97,7 +97,7 @@ class TestRhythmEnabled:
             mock_info.return_value = MagicMock(duration=5.0, samplerate=44100)
             Pipeline(cfg).run()
 
-        ts_path = tmp_path / "out" / "time_signatures.json"
+        ts_path = tmp_path / "out" / "ws" / "time_signatures.json"  # v0.5.1 修 5
         assert ts_path.exists()
         data = json.loads(ts_path.read_text())
         assert len(data) >= 1
@@ -156,7 +156,7 @@ class TestRhythmFailure:
             Pipeline(cfg).run()
 
         # beats.json 仍写出（默认 120）
-        beats = json.loads((tmp_path / "out" / "beats.json").read_text())
+        beats = json.loads((tmp_path / "out" / "ws" / "beats.json").read_text())
         assert beats["bpm"] == 120.0
 
 

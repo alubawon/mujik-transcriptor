@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import subprocess
 import sys
 import tempfile
@@ -350,7 +351,8 @@ def detect_chords_with_btc(
         out_dir.mkdir(parents=True, exist_ok=True)
 
     json_path = out_dir / f"btc_chords_{audio_path.stem}.json"
-    wrapper_path = out_dir / "_btc_predict_wrapper.py"
+    # v0.5.1 修 5：wrapper 脚本写系统临时目录，不再泄漏进产物目录
+    wrapper_path = Path(tempfile.gettempdir()) / f"mujik_btc_predict_wrapper_{os.getpid()}.py"
     wrapper_path.write_text(_BTC_PREDICT_WRAPPER)
 
     cmd = [
