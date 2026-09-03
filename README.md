@@ -222,26 +222,28 @@ muscriptor 模型权重为 **CC BY-NC 4.0**（仅限非商用研究），项目�
 - 容器化：Docker + NVIDIA Container Toolkit
 - 预提交：ruff + mypy + 许可证扫描
 
-### 本地开发 setup
+### 本地开发 setup（两层验证流程）
+
+**功能验证先在本地 `.venv` 闭环，容器（Dockerfile.ml）只留给构建 / 发布 / 容器专属 ML 栈。**
+
 ```bash
-# 锁定 Python 版本
-uv python install 3.11
-uv python pin 3.11
+# 一键本地 setup（macOS arm64 已验证）：venv + 依赖 + madmom 兼容补丁 + 硬校验
+./scripts/local_setup.sh
 
-# 创建 venv 并装依赖
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev,benchmark]"
+# 跑测试（全量单测含 PDF e2e，~5s）
+.venv/bin/python -m pytest tests/unit -q
 
-# 跑测试
-pytest tests/ -q
-
-# 跑最小管线（首次会下载模型权重到 ~/.cache/huggingface/）
-mujik run --input song.wav --output out/ --config config/default.yaml
-
-# 跑一键 demo（无参 = 三组合 showcase：demo/ 下三首曲子 × 各自 preset）
-./scripts/run_demo.sh
+# 本地可跑的功能：CLI、demucs 分离(CPU/MPS)、madmom 节拍/和弦、
+# BTC 和弦、quantize、MusicXML/PDF 渲染
+.venv/bin/mujik run --input song.wav --output out/ --preset pop
+.venv/bin/mujik chords --input song.wav --output chords.json
 ```
+
+> macOS 注意：cairosvg 需 `brew install cairo`，且 ctypes 搜不到 `/opt/homebrew/lib`，
+> 需 `export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib`（脚本已处理当前 shell）。
+
+容器专属（本地不覆盖）：bytedance piano(TF git 包) / muscriptor(CC-BY-NC) 的
+真实推理 E2E、镜像构建、发布验证——见 [Dockerfile.ml](Dockerfile.ml)。
 
 ## 仓库结构
 

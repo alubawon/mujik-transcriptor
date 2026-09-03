@@ -11,6 +11,7 @@ from mujik.transcribe.basic_pitch_adapter import (
     BASIC_PITCH_CLI,
     BasicPitchAdapterError,
     check_basic_pitch_available,
+    resolve_basic_pitch_cli,
     transcribe_with_basic_pitch,
 )
 from mujik.config.schema import BasicPitchConfig
@@ -48,6 +49,45 @@ class TestCheckAvailable:
             side_effect=FileNotFoundError("basic-pitch"),
         ):
             assert check_basic_pitch_available() is False
+
+
+class TestResolveCli:
+    """v0.5.2：CLI 路径解析——venv 下直接跑 .venv/bin/mujik 时子进程
+    PATH 里未必有 .venv/bin，需优先解析解释器同目录的 console script。"""
+
+    def test_sibling_of_executable_wins(self, tmp_path: Path):
+        fake_py = tmp_path / "python"
+        fake_py.write_text("")  # is_file() 需要真实文件
+        sibling = tmp_path / BASIC_PITCH_CLI
+        sibling.write_text("")
+        with patch("mujik.transcribe.basic_pitch_adapter.sys") as mock_sys:
+            mock_sys.executable = str(fake_py)
+            assert resolve_basic_pitch_cli() == str(sibling)
+
+    def test_fallback_to_path_name(self, tmp_path: Path):
+        fake_py = tmp_path / "python"
+        fake_py.write_text("")
+        with patch("mujik.transcribe.basic_pitch_adapter.sys") as mock_sys:
+            mock_sys.executable = str(fake_py)
+            assert resolve_basic_pitch_cli() == BASIC_PITCH_CLI
+
+    def test_cmd_uses_resolved_cli(self, tmp_path: Path):
+        """transcribe_with_basic_pitch 的 cmd[0] 应为解析结果而非裸名。"""
+        resolved = "/some/venv/bin/basic-pitch"
+        with (
+            patch(
+                "mujik.transcribe.basic_pitch_adapter.resolve_basic_pitch_cli",
+                return_value=resolved,
+            ),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = MagicMock(returncode=0)
+            (tmp_path / "a.wav").write_bytes(b"RIFF")  # 存在性检查
+            csv_path = tmp_path / "a_basic_pitch.csv"
+            _write_bp_csv(csv_path, [(0.0, 1.0, 60, 100)])
+            transcribe_with_basic_pitch(tmp_path / "a.wav", BasicPitchConfig(),
+                                        out_dir=tmp_path)
+            assert mock_run.call_args[0][0][0] == resolved
 
 
 class TestTranscribe:
@@ -92,7 +132,8 @@ class TestTranscribe:
 
         cmd = mock_run.call_args[0][0]
         # 验证 CLI + 阈值（v0.5.1: cmd[1]=--save-note-events，位置参数后移）
-        assert cmd[0] == BASIC_PITCH_CLI
+        # v0.5.2: cmd[0] 是解析后的 CLI（venv 同目录优先），与裸名等价即可
+        assert cmd[0] in (BASIC_PITCH_CLI, str(Path(BASIC_PITCH_CLI).parent / BASIC_PITCH_CLI)) or cmd[0].endswith(BASIC_PITCH_CLI)
         assert "--save-note-events" in cmd
         assert str(tmp_path) in cmd[2]
         assert str(audio) in cmd[3]

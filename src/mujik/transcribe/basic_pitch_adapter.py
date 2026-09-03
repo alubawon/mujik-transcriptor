@@ -27,11 +27,24 @@ class BasicPitchAdapterError(RuntimeError):
     pass
 
 
+def resolve_basic_pitch_cli() -> str:
+    """解析 basic-pitch CLI 路径。
+
+    优先取当前解释器同目录的 console script（venv 下直接跑 `.venv/bin/mujik`
+    时子进程 PATH 里未必有 .venv/bin）；不存在再回退裸命令名（依赖 PATH，
+    容器/系统安装场景）。
+    """
+    sibling = Path(sys.executable).parent / BASIC_PITCH_CLI
+    if sibling.is_file():
+        return str(sibling)
+    return BASIC_PITCH_CLI
+
+
 def check_basic_pitch_available() -> bool:
-    """检查 basic-pitch CLI 是否在 PATH 中。"""
+    """检查 basic-pitch CLI 是否可用（venv 同目录或 PATH）。"""
     try:
         result = subprocess.run(
-            [BASIC_PITCH_CLI, "--help"],
+            [resolve_basic_pitch_cli(), "--help"],
             capture_output=True, text=True, timeout=30,
         )
         return result.returncode == 0
@@ -70,7 +83,7 @@ def transcribe_with_basic_pitch(
     # 原 --min-note-length 等缩写不存在 → exit 2 usage error）；
     # 且 --save-note-events 默认 False，不加则不产出 adapter 要解析的 csv
     cmd = [
-        BASIC_PITCH_CLI,
+        resolve_basic_pitch_cli(),
         "--save-note-events",
         str(out_dir),
         str(audio_path),
@@ -170,6 +183,7 @@ def transcribe_with_basic_pitch(
 __all__ = [
     "transcribe_with_basic_pitch",
     "check_basic_pitch_available",
+    "resolve_basic_pitch_cli",
     "BasicPitchAdapterError",
     "BASIC_PITCH_CLI",
 ]
