@@ -22,6 +22,7 @@ from mujik.render.verovio_cli import (
     VerovioCliBackendError,
     render_musicxml_to_pdf,
 )
+from mujik.render.verovio_svg_pdf import VerovioSvgPdfError
 from mujik.render.lilypond_client import (
     LilyPondClient,
     LilyPondClientError,
@@ -71,7 +72,8 @@ def render_musicxml_to_file(
         musicxml_str: MusicXML 内容
         out_path: 输出路径
         config: RenderConfig
-        prefer_pdf: 若 True 且 backend=verovio 且 CLI 可用，走 CLI 出 PDF
+        prefer_pdf: 若 True 且 backend=verovio：verovio CLI 可用走 CLI，
+            否则回退 verovio toolkit SVG → cairosvg → pypdf（v0.5.2）
 
     Returns:
         实际写入的路径
@@ -79,21 +81,26 @@ def render_musicxml_to_file(
     cfg = config or RenderConfig()
     out_path = str(out_path)
 
-    # verovio + prefer_pdf → CLI
+    # verovio + prefer_pdf → CLI（有 CLI 用 CLI），否则 SVG→PDF 纯 Python 路径
     if cfg.pdf_backend == "verovio" and prefer_pdf:
         cli = VerovioCliBackend(
             cli_path=cfg.verovio_cli_path,
             timeout_sec=cfg.cli_timeout_sec,
         )
-        if not cli.is_available():
-            raise VerovioCliBackendError(
-                f"verovio CLI not found at {cfg.verovio_cli_path!r}; "
-                f"install via `apt install verovio` or `brew install verovio`"
-            )
         if not out_path.endswith(".pdf"):
             out_path = out_path + ".pdf"
-        cli.render_to_pdf(musicxml_str, out_path, page_size=cfg.page_size)
-        logger.info("Rendered: backend=verovio-cli, output={}", out_path)
+        if cli.is_available():
+            cli.render_to_pdf(musicxml_str, out_path, page_size=cfg.page_size)
+            logger.info("Rendered: backend=verovio-cli, output={}", out_path)
+        else:
+            # v0.5.2：Debian/Ubuntu apt 源没有 verovio 包，镜像内走
+            # verovio toolkit SVG → cairosvg → pypdf（见 verovio_svg_pdf.py）
+            from mujik.render.verovio_svg_pdf import (
+                render_musicxml_to_pdf_via_svg,
+            )
+            render_musicxml_to_pdf_via_svg(
+                musicxml_str, out_path, page_size=cfg.page_size,
+            )
         return out_path
 
     # 默认路径
@@ -121,6 +128,7 @@ __all__ = [
     "VerovioBackendError",
     "VerovioCliBackend",
     "VerovioCliBackendError",
+    "VerovioSvgPdfError",
     "LilyPondClient",
     "LilyPondClientError",
     "MuseScoreClient",

@@ -165,6 +165,14 @@
 | Chordino (aubio) | root | GPL-3.0 ⚠️ | 避开（GPL 传染） |
 | madmom (ChordRecognitionProcessor) | root + bass + 7ths | BSD-3 | 备选（停滞） |
 
+**v0.5.2 落地方式（BTC-HCQT vendoring）**：BTC-ISMIR19（Park et al., ISMIR 2019，
+MIT，[jayg996/BTC-ISMIR19](https://github.com/jayg996/BTC-ISMIR19)）的推理代码
+vendor 进 `src/mujik/chord/_btc/`（btc_model + utils 三件套 + LICENSE；
+170 类词表代码内生成无数据文件；本地补丁：np.float→float，numpy 1.24+）。
+large_voca 权重（12MB，随上游仓库分发）在 ml 镜像构建时下载到
+`/app/models/`，运行时按 `config.btc_model_path` → env `MUJIK_BTC_MODEL` 解析。
+buhee×jazz 实测：234 chords，maj7/m7/7 延伸和弦占 171/234（madmom 时代仅 major/minor）。
+
 **已知风险**：
 - 领域 plateau 在 77-82% root accuracy
 - 爵士 9/11/13 扩展和弦识别率低

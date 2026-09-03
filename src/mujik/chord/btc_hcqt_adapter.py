@@ -204,7 +204,10 @@ def main():
 
     model = BTC_model(config=config.model).to(device)
     try:
-        checkpoint = torch.load(model_path, map_location=device)
+        # torch 2.6+ 默认 weights_only=True 会拒载含 numpy 标量（mean/std）的
+        # checkpoint；权重来自上游 MIT 仓库（jayg996/BTC-ISMIR19），显式关闭
+        checkpoint = torch.load(model_path, map_location=device,
+                                weights_only=False)
         mean = checkpoint["mean"]
         std = checkpoint["std"]
         model.load_state_dict(checkpoint["model"])
@@ -333,16 +336,22 @@ def detect_chords_with_btc(
         if config is not None
         else BTC_HCQT_TIMEOUT_DEFAULT
     )
+    voca = (
+        getattr(config, "btc_voca", None)
+        or getattr(config, "voca", "large")
+        if config is not None
+        else "large"
+    )
+
+    # 权重路径解析顺序：config.btc_model_path → env MUJIK_BTC_MODEL → None
+    # （镜像内默认装到 /app/models/btc_model_large_voca.pt 并设 env，实现零配置）
     model_path = (
         getattr(config, "btc_model_path", None)
         if config is not None
         else None
     )
-    voca = (
-        getattr(config, "voca", "large")
-        if config is not None
-        else "large"
-    )
+    if not model_path:
+        model_path = os.environ.get("MUJIK_BTC_MODEL") or None
 
     if out_dir is None:
         out_dir = Path(tempfile.mkdtemp(prefix="mujik_btc_chord_"))
@@ -366,9 +375,18 @@ def detect_chords_with_btc(
         input=audio_path, model=model_path, voca=voca, sec=timeout,
     )
 
+    # vendor 目录注入：wrapper 写在系统临时目录，其自身 __file__ 解析不到包内
+    # _btc/，因此这里显式把包内 vendored BTC-ISMIR19 目录放进 BTC_ISMIR19_PATH
+    # （用户显式设置的 env 优先，不覆盖）
+    env = dict(os.environ)
+    if not env.get("BTC_ISMIR19_PATH"):
+        vendor_dir = Path(__file__).resolve().parent / "_btc"
+        if vendor_dir.is_dir():
+            env["BTC_ISMIR19_PATH"] = str(vendor_dir)
+
     try:
         result = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout,
+            cmd, capture_output=True, text=True, timeout=timeout, env=env,
         )
     except subprocess.TimeoutExpired as e:
         raise BtcHcqtAdapterError(

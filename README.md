@@ -126,7 +126,7 @@ WAV/FLAC/MP3
 | 节拍/下拍 | madmom CRNN | ✅ v0.2.2 |
 | 时间签名 | 启发式 4/4 | ✅ v0.2.3 |
 | 和弦识别（major/minor）| madmom CRNN | ✅ v0.4.4 |
-| 和弦识别（7th/延伸）| BTC-HCQT (MIT) | ✅ v0.4.8 |
+| 和弦识别（7th/延伸）| BTC-HCQT (MIT, 代码内嵌 vendor + 权重镜像自动下载) | ✅ v0.5.2 |
 | 多乐器一次转 | MuScriptor（CC-BY-NC 隔离）| ✅ v0.4.2 |
 | 渲染主线 | Verovio (BSD) | ✅ v0.2.4 |
 | 渲染精细 | LilyPond (GPL 隔离) | 🧪 v0.3 |
@@ -194,6 +194,8 @@ mujik time-signature change --project-dir out/ --at 1:30.000 \
 ```bash
 mujik render --input score.musicxml --output score.pdf --pdf
 # backend: verovio (默认) / lilypond / musescore
+# v0.5.2：verovio CLI 不可用时自动回退纯 Python 链路
+#   verovio toolkit SVG → cairosvg → pypdf（需系统 libcairo2，ml 镜像已预装）
 ```
 
 ### 9. 5-genre benchmark

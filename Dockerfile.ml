@@ -24,9 +24,11 @@ RUN set -euxo pipefail; \
 
 # 0) 系统库：pkg-config + libopus（sphn→audiopus_sys 优先链接系统 opus，
 #    跳过 CMake 源码编译；CMake 4.x 已移除 <3.5 兼容，加 policy 开关兜底）
+#    + libcairo2（PDF 渲染链 verovio toolkit SVG→cairosvg→pypdf 需要；
+#      Debian/Ubuntu apt 源没有 verovio CLI 包，走纯 Python 路径）
 RUN set -euxo pipefail; \
     apt-get update; \
-    apt-get install -y --no-install-recommends pkg-config libopus-dev; \
+    apt-get install -y --no-install-recommends pkg-config libopus-dev libcairo2; \
     rm -rf /var/lib/apt/lists/*
 
 ENV CMAKE_POLICY_VERSION_MINIMUM=3.5
@@ -51,11 +53,11 @@ RUN set -euxo pipefail; \
     UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
     uv pip install --no-cache "Cython" "numpy==1.26.4" "hatchling"
 
-# 3) demucs + transcribe + drumscript + benchmark
+# 3) demucs + transcribe + drumscript + benchmark + render（PDF 链）
 RUN set -euxo pipefail; \
     . /app/.venv/bin/activate; \
     UV_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple \
-    uv pip install --no-cache ".[separate,transcribe,transcribe-tf,transcribe-drumscript,benchmark]"
+    uv pip install --no-cache ".[separate,transcribe,transcribe-tf,transcribe-drumscript,benchmark,render]"
 
 # 4) madmom（单独装；失败即中止——主线 chord 功能必需）
 #    madmom 0.16 兼容补丁（装后执行）：
@@ -77,6 +79,16 @@ RUN set -euxo pipefail; \
 # 4.5) v0.5.2 起 drums 转录用 DrumScript（transcribe-drumscript extra，见步骤 3），
 #      替代 adtof（原仓库 git URL 死链 + LICENSE 实为 CC-BY-NC-SA + 移植版无 LICENSE）。
 
+# 4.7) BTC-ISMIR19 large_voca 预训练权重（MIT，随上游仓库分发，12MB）。
+#      权重不进 git（模型权重分离策略），镜像构建时下载到固定路径；
+#      adapter 按 config.btc_model_path → env MUJIK_BTC_MODEL 顺序解析。
+ARG BTC_MODEL_URL=https://raw.githubusercontent.com/jayg996/BTC-ISMIR19/master/test/btc_model_large_voca.pt
+RUN set -euxo pipefail; \
+    mkdir -p /app/models; \
+    curl -sfL "${BTC_MODEL_URL}" -o /app/models/btc_model_large_voca.pt; \
+    test "$(stat -c%s /app/models/btc_model_large_voca.pt)" -gt 1000000
+ENV MUJIK_BTC_MODEL=/app/models/btc_model_large_voca.pt
+
 # 5) 硬校验：任何一个 import 失败 → build 失败
 RUN set -euxo pipefail; \
     . /app/.venv/bin/activate; \
@@ -85,7 +97,9 @@ RUN set -euxo pipefail; \
     python -c "import drumscript; print('drumscript OK')"; \
     python -c "import mir_eval; print('mir_eval OK')"; \
     python -c "import madmom; print('madmom OK')"; \
-    python -c "import torch; print('torch', torch.__version__)"
+    python -c "import torch; print('torch', torch.__version__)"; \
+    python -c "import cairosvg, pypdf; print('svg-pdf OK')"; \
+    test -s "${MUJIK_BTC_MODEL}"
 
 USER mujik
 

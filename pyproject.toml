@@ -93,6 +93,10 @@ preprocess-denoise = [
 ]
 render = [
   "verovio>=6.0",
+  # v0.5.2 PDF 主路径：verovio toolkit SVG → cairosvg → pypdf
+  # （Debian/Ubuntu apt 源无 verovio CLI 包；cairosvg 需系统 libcairo2）
+  "cairosvg>=2.7",
+  "pypdf>=4.0",
 ]
 bench = [
   "mir_eval>=0.7",

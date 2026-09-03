@@ -116,6 +116,8 @@ class ChordConfig(BaseModel):
     chord_timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
     # v0.4.8: BTC-HCQT 专属配置
+    # btc_model_path: None 时按 env MUJIK_BTC_MODEL 回退（ml 镜像默认
+    #   /app/models/btc_model_large_voca.pt），再没有则 fail-loud（wrapper exit 5）
     btc_model_path: str | None = None  # 用户提供 .pt 文件路径
     btc_voca: Literal["large", "simple"] = "large"  # 170 类 vs 25 类
     btc_timeout_sec: int = Field(default=1800, ge=60, le=7200)
