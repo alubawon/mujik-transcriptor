@@ -1,8 +1,45 @@
 # benchmarks/
 
-v0.4.0 scaffold for measuring the mujik-transcriptor pipeline.
+Benchmark scripts + the v0.5.0 5-genre benchmark framework (`src/mujik/benchmarks/`).
 
-## Scripts
+## Framework（src/mujik/benchmarks/，v0.5.0+）
+
+- `datasets/synthetic.py` — 内置 5 genre × 3 file synthetic baseline（CI smoke，无外部数据）
+- `datasets/local.py` — **v0.5.2**：manifest 驱动的本地真实曲库（仓库不携带数据，版权干净）
+- `pipeline_adapter.py` — **v0.5.2**：把完整管线（demucs + madmom + basic-pitch/drumscript + chord）接进 runner
+- `metrics.py` — note F1（±50ms onset）/ beat CMLt / chord majmin（mir_eval）
+- `runner.py` — 编排 + 聚合 + CLI 入口
+
+### 真实数据 benchmark（--dataset local）
+
+仓库不携带任何音频/标注。在自家曲库目录放 `manifest.json`：
+
+```json
+[
+  {
+    "sample_id": "s1",
+    "genre": "jazz",
+    "audio": "audio/s1.wav",
+    "notes":  [[60, 0.5, 1.2]],
+    "beats":  [0.0, 0.5, 1.0],
+    "chords": [[0.0, 2.0, "C", "maj7"]]
+  }
+]
+```
+
+`notes`/`beats`/`chords` 均可选（缺失的 metric 该样本记 0）。
+路径相对 data_dir；manifest 或音频缺失/格式错 → fail-loud。
+
+```bash
+.venv/bin/python -m mujik.benchmarks.runner \
+  --dataset local --data-dir my_bench/ \
+  --preset pop --output bench.md --json bench.json
+```
+
+对每个样本跑一次完整管线（`--preset pop/jazz/metal`，chord 默认强制开，
+`--no-chords` 关闭）。`--limit N` 只跑前 N 个样本。
+
+## Scripts（v0.4.0 scaffold）
 
 ### `run_separation.py`
 Run Demucs (4-stem `htdemucs_ft` or 6-stem `htdemucs_6s`) and report timing + volume.
@@ -16,7 +53,7 @@ PYTHONPATH=src python benchmarks/run_separation.py \
 ```
 
 ### `run_transcription.py`
-Run a transcription adapter (basic-pitch / adtof / bytedance-piano) and report timing + note count.
+Run a transcription adapter (basic-pitch / drumscript / bytedance-piano) and report timing + note count.
 
 ```bash
 PYTHONPATH=src python benchmarks/run_transcription.py \
@@ -25,13 +62,10 @@ PYTHONPATH=src python benchmarks/run_transcription.py \
     --out /tmp/transcription_report.json
 ```
 
-## v0.4.0 scope (scaffold only)
-
-- These scripts record `elapsed_sec` + metadata (input path, adapter choice).
-- They do **not** run heavy model inference in the scaffold mode (v0.4.0 only).
-- Real evaluation (SDR/SIR/SAR for separation; onset F1 / pitch F1 for transcription) requires a labeled ground-truth dataset — out of scope for v0.4.0.
-
 ## Roadmap
 
-- v0.5: bring in a small labeled corpus (e.g. MUSDB18 for separation, MAPS for piano, MIREX for onset) and wire `mir_eval` / `museval` to compute real metrics.
-- v0.5+: 5-genre benchmark (pop / jazz / metal / electronic / folk) — requires a curated multi-genre dataset, deferred until dataset licensing is sorted out.
+- ✅ ~~v0.5: framework + synthetic baseline~~（v0.5.0 落地）
+- ✅ ~~v0.5.2: 真实数据 benchmark~~（`--dataset local` manifest 驱动）
+- 标准公开数据集（MUSDB18 分离 museval SDR / MAPS 钢琴 / Billboard 和弦）按 PR 引入
+- 评测项对照 [research.md §6 本地 benchmark 清单](../docs/research.md#6-本地-benchmark-清单)
+  （优先级 1+2+3+6：分离 SDR / 多音转录 F1 / 鼓转录 / 演奏细节 f0-vs-MIDI）

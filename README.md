@@ -131,7 +131,7 @@ WAV/FLAC/MP3
 | 渲染主线 | Verovio (BSD) | ✅ v0.2.4 |
 | 渲染精细 | LilyPond (GPL 隔离) | 🧪 v0.3 |
 | 渲染快速 | MuseScore (GPL 隔离) | 🧪 v0.3 |
-| Benchmark 框架 | synthetic 5-genre | ✅ v0.5.0 |
+| Benchmark 框架 | synthetic 5-genre | ✅ v0.5.0（v0.5.2 + 本地真实曲库 manifest）|
 
 ## 文档
 
@@ -201,8 +201,21 @@ mujik render --input score.musicxml --output score.pdf --pdf
 ### 9. 5-genre benchmark
 ```bash
 uv pip install 'mujik-transcriptor[benchmark]'
+
+# synthetic baseline（5 genre × 3 file，验证 framework + sanity check）
 python -m mujik.benchmarks.runner --dataset synthetic --output bench.md
-# 输出 bench.md + bench.json（per-genre + overall）
+
+# 真实数据 benchmark（自家曲库，仓库不携带数据）：
+#   1) 建目录 my_bench/，放音频（audio/*.wav）+ manifest.json：
+#      [{"sample_id": "s1", "genre": "jazz", "audio": "audio/s1.wav",
+#        "notes": [[60,0.5,1.2],...], "beats": [...], "chords": [[0,2,"C","maj7"],...]}, ...]
+#   2) 跑（对每样本执行完整管线：demucs + madmom + basic-pitch/drumscript + chord）
+python -m mujik.benchmarks.runner --dataset local --data-dir my_bench/ \
+  --preset pop --output bench.md
+# --limit N 快速试跑；--no-chords 跳过和弦检测；--json bench.json 同时出 JSON
+
+# 输出 bench.md + bench.json（per-genre + overall：
+# note F1 / beat CMLt / chord majmin）
 ```
 
 ## 许可证
@@ -286,7 +299,8 @@ mujik-transcriptor/
 
 ## 贡献
 
-WIP。本地 benchmark 是当前最重要的环节：见 [research.md §6](docs/research.md#6-本地-benchmark-清单)。
+WIP。真实数据 benchmark 已可用（`--dataset local`，见调用示例 §9）：在自家曲库上按
+[research.md §6](docs/research.md#6-本地-benchmark-清单) 清单逐项评测。
 
 ## 引用
 
