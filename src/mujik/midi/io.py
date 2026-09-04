@@ -332,10 +332,12 @@ def read_midi_to_project(
                 end_time=float(duration) if duration > 0 else 1.0,
                 bpm=bpm,
             ))
-    except (ValueError, AttributeError, IndexError):
+    except (ValueError, AttributeError, IndexError) as e:
         # 少于 2 个 note 时 estimate_tempo 失败，get_tempo_changes 可能也空
-        pass
+        # v0.5.2: 回退前至少留一条 debug 日志（docstring 声明的最佳努力路径）
+        logger.debug("read_project_from_midi: tempo parse failed ({}), fallback 120 BPM", e)
     if not tempo_map:
+        logger.debug("read_project_from_midi: no tempo events, fallback 120 BPM")
         tempo_map = [TempoSegment(0.0, duration if duration > 0 else 1.0, 120.0)]
 
     # Time signatures

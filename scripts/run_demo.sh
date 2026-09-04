@@ -128,17 +128,21 @@ run_once() {
     echo "── run → ${out_dir#$REPO_ROOT/} ${p:+[preset=$p]} ──"
     mkdir -p "$out_dir"
     # macOS bash 3.2 兼容：set -u 下空数组必须用安全展开写法
+    # v0.5.2: run 失败继续跑后续组合（showcase 不互相拖死），
+    # 但计入 FAIL_COUNT → 脚本最终 exit 1（此前全失败也 exit 0 + ✅）
     if [[ $HAS_MUJIK -eq 1 ]]; then
       mujik run --input "$work_wav" --output "$out_dir" \
         ${preset_args[@]+"${preset_args[@]}"} \
         ${ws_args[@]+"${ws_args[@]}"} || {
         echo "[demo] ⚠ run 失败（preset=${p:-default}，继续）"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
       }
     else
       python3 -m mujik.cli run --input "$work_wav" --output "$out_dir" \
         ${preset_args[@]+"${preset_args[@]}"} \
         ${ws_args[@]+"${ws_args[@]}"} || {
         echo "[demo] ⚠ run 失败（preset=${p:-default}，继续）"
+        FAIL_COUNT=$((FAIL_COUNT + 1))
       }
     fi
     if [[ $HAS_VEROVIO -eq 1 ]] && [[ -f "$out_dir/score.musicxml" ]]; then
@@ -153,8 +157,12 @@ run_once() {
   fi
 }
 
+FAIL_COUNT=0
 for entry in "${RUNS[@]}"; do
-  run_once "${entry%%|*}" "${entry##*|}" || echo "[demo] ⚠ $entry 跑失败，继续"
+  run_once "${entry%%|*}" "${entry##*|}" || {
+    echo "[demo] ⚠ $entry 跑失败，继续"
+    FAIL_COUNT=$((FAIL_COUNT + 1))
+  }
 done
 
 # --- 汇总报告 ---
@@ -162,4 +170,8 @@ python3 "$REPO_ROOT/scripts/_demo_report.py" "$OUT_ROOT" > "$OUT_ROOT/demo_repor
   || echo "[demo] ⚠ report 失败"
 
 echo
+if [[ $FAIL_COUNT -gt 0 ]]; then
+  echo "❌ done（$FAIL_COUNT 个 run 失败）→ $OUT_ROOT/（报告: $OUT_ROOT/demo_report.md）"
+  exit 1
+fi
 echo "✅ done → $OUT_ROOT/（报告: $OUT_ROOT/demo_report.md）"

@@ -142,7 +142,12 @@ def separate_with_htdemucs_6s(
                 import soundfile as sf
                 info = sf.info(str(dst))
                 duration = float(info.duration)
-            except Exception:
+            except Exception as e:
+                # v0.5.2: duration=0.0 不再无声无息（下游按 0 处理时至少有迹可循）
+                logger.warning(
+                    "htdemucs_6s: failed to probe duration for %s: %s",
+                    dst, e,
+                )
                 duration = 0.0
             stems_obj.add(Stem(
                 name=stem_name,  # type: ignore[arg-type]

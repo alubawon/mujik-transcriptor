@@ -132,3 +132,30 @@ class TestHeader:
     def test_script_chmod_executable(self):
         mode = SCRIPT.stat().st_mode
         assert mode & 0o111, f"script not executable: {SCRIPT}"
+
+
+class TestFailureExitCode:
+    """v0.5.2: run 失败计入 FAIL_COUNT → 脚本 exit 1（此前全失败也 exit 0）。"""
+
+    def test_run_failure_exits_1(self, tmp_path: Path):
+        """fake mujik 恒失败 → ❌ done + exit 1（showcase 其余组合仍继续）。"""
+        if not shutil.which("bash"):
+            pytest.skip("bash not available")
+        fake_bin = tmp_path / "fakebin"
+        fake_bin.mkdir()
+        fake_mujik = fake_bin / "mujik"
+        fake_mujik.write_text("#!/usr/bin/env bash\nexit 3\n")
+        fake_mujik.chmod(0o755)
+
+        import os
+        env = os.environ.copy()
+        env.pop("MUJIK_DEMO_PRESETS", None)
+        env["PATH"] = f"{fake_bin}:{env['PATH']}"
+        r = subprocess.run(
+            ["bash", str(SCRIPT)], capture_output=True, text=True,
+            timeout=120, env=env,
+        )
+        assert r.returncode == 1
+        assert "❌ done（" in r.stdout
+        assert "3 个 run 失败" in r.stdout  # 三曲 showcase 全部失败
+        assert "✅" not in r.stdout

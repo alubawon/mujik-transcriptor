@@ -273,6 +273,23 @@ class TestRunnerMain:
         assert result.returncode != 0
         assert "--data-dir" in (result.stderr + result.stdout)
 
+    def test_all_failed_exit_code_1(self, tmp_path, monkeypatch):
+        """v0.5.2: 全部样本产出为空（管线崩溃）→ main 返回 1。"""
+        monkeypatch.setattr(
+            "mujik.benchmarks.runner.PipelineBenchmarkAdapter",
+            self._stub_class(pred={
+                "note_transcription": {"notes": []},
+                "beat_tracking": {"beats": []},
+                "chord_recognition": {"chords": []},
+            }),
+        )
+        rc = main([
+            "--dataset", "synthetic", "--limit", "1",
+            "--output", str(tmp_path / "bench.md"),
+            "--json", str(tmp_path / "bench.json"),
+        ])
+        assert rc == 1
+
     def test_synthetic_run_with_stub_pipeline(self, tmp_path, monkeypatch):
         """--limit 1 + stub pipeline → 报告落盘。"""
         monkeypatch.setattr(

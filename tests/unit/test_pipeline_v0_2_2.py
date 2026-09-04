@@ -155,9 +155,11 @@ class TestRhythmFailure:
             mock_info.return_value = MagicMock(duration=5.0, samplerate=44100)
             Pipeline(cfg).run()
 
-        # beats.json 仍写出（默认 120）
+        # beats.json 仍写出（默认 120），且带 provenance 标记
+        # （v0.5.2：下游可区分"测得 120"与"madmom 失败后的编造值"）
         beats = json.loads((tmp_path / "out" / "ws" / "beats.json").read_text())
         assert beats["bpm"] == 120.0
+        assert beats["source"] == "madmom-failed-fallback"
 
 
 class TestRhythmDisabled:
@@ -182,3 +184,49 @@ class TestRhythmDisabled:
         mock_bt.assert_not_called()
         # 不写 beats.json
         assert not (tmp_path / "out" / "beats.json").exists()
+
+
+class TestTranscribeFailures:
+    """v0.5.2: 转录失败的 fail-loud / fail-soft 边界。"""
+
+    @staticmethod
+    def _run(cfg, **patches):
+        audio = Path(cfg.input_path)
+        audio.write_bytes(b"RIFF")
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
+             patch("mujik.pipeline.transcribe_stem", **patches), \
+             patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
+             patch("soundfile.info") as mock_info:
+            mock_info.return_value = MagicMock(duration=5.0, samplerate=44100)
+            return Pipeline(cfg).run()
+
+    def test_router_error_propagates(self, tmp_path: Path):
+        """配置错误（RouterError）不再被 catch-all 吞掉——fail-loud 上抛。"""
+        from mujik.transcribe.router import RouterError
+
+        cfg = _base_cfg(tmp_path)
+        with pytest.raises(RouterError):
+            self._run(cfg, side_effect=RouterError("drums: 'adtof' 未注册"))
+
+    def test_all_stems_fail_raises(self, tmp_path: Path):
+        """全部 stem 运行时失败 → RuntimeError（0 音符 MIDI 无意义）。"""
+        cfg = _base_cfg(tmp_path)
+
+        def always_fail(stem, config=None, out_dir=None):
+            raise RuntimeError("adapter exploded")
+
+        with pytest.raises(RuntimeError, match="all stems failed"):
+            self._run(cfg, side_effect=always_fail)
+
+    def test_partial_stem_failure_continues(self, tmp_path: Path):
+        """单个 stem 运行时失败仍 fail-soft 继续（其余 stem 正常产出）。"""
+        cfg = _base_cfg(tmp_path)
+
+        def flaky(stem, config=None, out_dir=None):
+            if stem.name == "vocals":
+                raise RuntimeError("basic-pitch boom")
+            return _fake_transcribe(stem)
+
+        project = self._run(cfg, side_effect=flaky)
+        assert "vocals" not in project.tracks or not project.tracks["vocals"].notes
+        assert len(project.tracks["drums"].notes) == 1

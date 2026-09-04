@@ -29,7 +29,7 @@ from mujik.rhythm.time_signature import infer_time_signature_from_downbeats
 from mujik.separate.model import Stems
 from mujik.separate.router import separate_audio
 from mujik.time_signature.model import build_default_segments
-from mujik.transcribe.router import transcribe_stem
+from mujik.transcribe.router import RouterError, transcribe_stem
 
 # Pipeline 固定阶段数（per_stem 模式：denoise + loudnorm + rhythm + chord + quantize
 # + groove + demucs + per_stem transcribe + write + multitrack 分支另算）
@@ -160,8 +160,14 @@ class Pipeline:
                 time_sigs = build_default_segments(duration if duration > 0 else 1.0)
 
             # 写 beats.json
+            # v0.5.2: madmom 失败的 fallback 带 provenance 标记——下游
+            # （benchmark/quantize/demo report）能区分"测得 120"与"编造 120"
             (ws_dir / "beats.json").write_text(json.dumps(
-                beat_track.to_dict() if beat_track else {"bpm": 120.0},
+                beat_track.to_dict() if beat_track
+                else {
+                    "bpm": 120.0, "beats": [], "downbeats": [],
+                    "source": "madmom-failed-fallback",
+                },
                 ensure_ascii=False, indent=2,
             ))
             (ws_dir / "time_signatures.json").write_text(json.dumps([
@@ -409,11 +415,18 @@ class Pipeline:
         )
 
         # ---- 5. 按 stem 转录 ----
+        # v0.5.2: RouterError（配置 typo / 未实现 backend，如 drums:"adtof"、
+        # guitar→apollo）fail-loud 上抛——此前被下面的 catch-all 吞成
+        # per-stem warning + 缺轨 + exit 0，抵消了 fail-loud router 的意义。
+        # adapter 运行时错误仍 fail-soft，但全部 stem 失败 → 上抛（产物无意义）。
+        transcribed = 0
         for stem in stems.primary_stems():
             try:
                 notes = transcribe_stem(
                     stem, config=cfg.transcribe, out_dir=str(ws_dir / "tracks"),
                 )
+            except RouterError:
+                raise
             except Exception as e:  # noqa: BLE001
                 logger.warning(
                     "pipeline[5/7]: transcribe {stem} failed: {err}",
@@ -422,6 +435,7 @@ class Pipeline:
                 prog.advance(f"transcribe:{stem.name}", extra="failed")
                 continue
 
+            transcribed += 1
             track = project.get_track(stem.name)  # type: ignore[arg-type]
             for note in notes:
                 track.add(note)
@@ -431,6 +445,13 @@ class Pipeline:
                 stem=stem.name, n=len(track.notes),
             )
             prog.advance(f"transcribe:{stem.name}", extra=f"{len(track.notes)} notes")
+
+        if transcribed == 0:
+            prog.__exit__(None, None, None)
+            raise RuntimeError(
+                "pipeline[5/7]: all stems failed to transcribe — "
+                "no usable MIDI output (see warnings above for per-stem causes)"
+            )
 
         # ---- 6. 写 MIDI ----
         midi_path = out_dir / "project.mid"

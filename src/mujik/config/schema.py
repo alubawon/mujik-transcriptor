@@ -62,11 +62,10 @@ class TranscribeConfig(BaseModel):
     guitar: str = "apollo"
     other: str = "basic-pitch"
 
-    polyphonic_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     onset_interval_min_ms: float = Field(default=50.0, ge=10.0, le=500.0)
-    velocity_threshold: int = Field(default=30, ge=1, le=127)
     min_note_length_ms: float = Field(default=50.0, ge=10.0, le=1000.0)
-    max_polyphony: int = Field(default=6, ge=1, le=32)
+    # v0.5.2: 删除 polyphonic_threshold/velocity_threshold/max_polyphony——
+    # 从未有任何 adapter 消费（配置说谎）；需要时随实现一起加回
 
 
 class BasicPitchConfig(BaseModel):
@@ -95,12 +94,14 @@ class RhythmConfig(BaseModel):
     """节拍/下拍/时间签名配置。"""
 
     enabled: bool = True
-    beat_tracker: Literal["madmom", "beat-transformer", "beatnet"] = "madmom"
-    time_signature_model: str = "resnet18-meter2800"
+    # v0.5.2: 收敛到实际实现。beat_tracker 只有 madmom 一个后端、拍号只有
+    # downbeat 启发式——原先的 beat-transformer/beatnet/resnet18-meter2800
+    # 从未存在，Literal 收窄后"设了不生效"的配置说谎在加载期即报错
+    beat_tracker: Literal["madmom"] = "madmom"
+    time_signature_model: Literal["heuristic-downbeat"] = "heuristic-downbeat"
     time_signature_fallback: tuple[int, int] = (4, 4)
-    allow_user_override: bool = True
-    confidence_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
     madmom_timeout_sec: int = Field(default=1800, ge=60, le=7200)
+    # v0.5.2: 删除 allow_user_override/confidence_threshold——从未被消费
 
 
 class ChordConfig(BaseModel):
@@ -111,7 +112,6 @@ class ChordConfig(BaseModel):
     # - madmom: v0.4.4 引入；仅 major/minor
     # - btc-hcqt: v0.4.8 引入；170 类（major/minor/7/maj7/m7/dim/aug/sus2/sus4/...）
     backend: Literal["madmom", "btc-hcqt"] = "btc-hcqt"
-    models: list[str] = Field(default_factory=lambda: ["btc-hcqt", "chord-cnn-lstm"])
     vocab: Literal["root", "root-quality", "extended", "btc-extended"] = "btc-extended"
     chord_timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
@@ -150,7 +150,7 @@ class QuantizeConfig(BaseModel):
     grid_resolution: int = Field(default=16)
     strength: float = Field(default=0.8, ge=0.0, le=1.0)
     groove_template: str = "straight"
-    custom_groove_path: str | None = None
+    # v0.5.2: 删除 custom_groove_path——从未被 quantize.core 消费
 
 
 class MergeConfig(BaseModel):
@@ -170,7 +170,7 @@ class RenderConfig(BaseModel):
     lilypond_url: str = "http://localhost:5001"
     musescore_url: str = "http://localhost:5002"
     include_chord_symbols: bool = True
-    include_lyrics: bool = False
+    # v0.5.2: 删除 include_lyrics——Project 无 lyric 字段，builder 从未实现（no-op 说谎）
     page_size: Literal["A4", "Letter"] = "A4"
     staff_count: int = Field(default=2, ge=1, le=20)
     timeout_sec: int = Field(default=60, ge=1, le=600)

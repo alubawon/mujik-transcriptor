@@ -86,10 +86,18 @@ class PipelineBenchmarkAdapter:
         pred_notes.sort(key=lambda t: (t[1], t[0]))
 
         # beats：ws/beats.json（madmom artifact）
+        # v0.5.2: 缺文件或 rhythm 关闭时打 warning——此前静默空列表会让
+        # beat CMLt 全 0 却看不出原因
         pred_beats: list[float] = []
         beats_json = ws_dir / "beats.json"
         if beats_json.is_file():
             pred_beats = [float(b) for b in json.loads(beats_json.read_text()).get("beats", [])]
+        else:
+            logger.warning(
+                "benchmark pipeline: beats.json not found at %s "
+                "(rhythm disabled?) — beat CMLt will be 0",
+                beats_json,
+            )
 
         # chords：project.chord_track（quantize/groove 后，v0.4.9）
         pred_chords = [(c.start, c.end, c.root, c.quality) for c in (project.chord_track or [])]

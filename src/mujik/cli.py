@@ -75,7 +75,6 @@ def cmd_render(args: argparse.Namespace) -> int:
         pdf_backend=args.backend,
         page_size=args.page_size,
         include_chord_symbols=args.include_chord_symbols,
-        include_lyrics=args.include_lyrics,
         verovio_cli_path=args.verovio_cli_path,
     )
 
@@ -370,9 +369,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_render.add_argument(
         "--include-chord-symbols", action="store_true", default=True,
-    )
-    p_render.add_argument(
-        "--include-lyrics", action="store_true", default=False,
     )
     p_render.add_argument(
         "--verovio-cli-path", default="verovio",

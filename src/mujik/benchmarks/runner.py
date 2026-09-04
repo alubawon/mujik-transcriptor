@@ -257,6 +257,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.json:
         Path(args.json).write_text(render_json(report), encoding="utf-8")
     print(f"\nreport → {args.output}" + (f" + {args.json}" if args.json else ""))
+
+    # v0.5.2: 全部样本失败 → 非零退出码（此前全 0 分报告也 exit 0，
+    # "管线全崩"和"管线跑通但分数低"无法从自动化流程区分）
+    n_ok = sum(1 for sm in report.per_sample
+               if sm.metrics.get("note_transcription", {}).get("n_pred", 0) > 0)
+    if report.n_samples > 0 and n_ok == 0:
+        print("\n❌ all samples failed to produce predictions")
+        return 1
     return 0
 
 

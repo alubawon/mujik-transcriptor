@@ -17,7 +17,10 @@ def _load_json(p: Path) -> dict | None:
         return None
     try:
         return json.loads(p.read_text(encoding="utf-8"))
-    except Exception:
+    except Exception as e:
+        # v0.5.2: 损坏 json 与缺失 json 在报告里都显示 "?"，但损坏是异常
+        # 状态——打 stderr 让操作者看见（此前静默吞掉）
+        print(f"[demo_report] ⚠ corrupt json ignored: {p} ({e})", file=sys.stderr)
         return None
 
 
