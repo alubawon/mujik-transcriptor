@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from loguru import logger
 
-from mujik.config.schema import BasicPitchConfig, DrumScriptConfig, TranscribeConfig
+from mujik.config.schema import DrumScriptConfig, TranscribeConfig
 from mujik.midi.model import Note, StemName
 from mujik.separate.model import Stem
 
@@ -49,12 +49,16 @@ def transcribe_stem(
 
     if adapter_name == "basic-pitch":
         from mujik.transcribe.basic_pitch_adapter import transcribe_with_basic_pitch
+        # v0.5.3: per-stem 配置（stem_basic_pitch）优先，未列出的 stem 用
+        # 全局 basic_pitch。min_note_length 仍取 TranscribeConfig 的全局值
+        # （drumscript 与 basic-pitch 共用同一语义）。
+        # v0.5.3 修：删除 `onset_threshold=onset_interval_min_ms / 100`——
+        # 毫秒时间参数除以 100 冒充概率阈值，是类型说谎（50→0.5 纯属撞对）
+        bp_cfg = cfg.stem_basic_pitch.get(stem.name) or cfg.basic_pitch
+        bp_cfg = bp_cfg.model_copy(update={"min_note_length_ms": cfg.min_note_length_ms})
         return transcribe_with_basic_pitch(
             stem.audio_path,
-            config=BasicPitchConfig(
-                onset_threshold=cfg.onset_interval_min_ms / 100.0,
-                min_note_length_ms=cfg.min_note_length_ms,
-            ),
+            config=bp_cfg,
             out_dir=out_dir,
         )
     if adapter_name == "drumscript":

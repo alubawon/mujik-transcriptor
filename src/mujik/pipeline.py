@@ -14,6 +14,7 @@ v0.2.2 完整流程：
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 
 from loguru import logger
@@ -25,6 +26,7 @@ from mujik.midi.model import Project, TempoSegment
 from mujik.pipeline_progress import PipelineProgress
 from mujik.preprocess.loudnorm import normalize_loudness
 from mujik.rhythm.madmom_adapter import track_beats_with_madmom
+from mujik.rhythm.tempo import reconcile_bpm
 from mujik.rhythm.time_signature import infer_time_signature_from_downbeats
 from mujik.separate.model import Stems
 from mujik.separate.router import separate_audio
@@ -130,6 +132,20 @@ class Pipeline:
                 beat_track = None
 
             if beat_track is not None:
+                # v0.5.3: 全局 tempo 估计有半速/倍速混淆倾向（demo 三曲全部
+                # 报半速）；DBN 拍点数组自洽 → 以拍点推导值校正估计。
+                # reconcile 结果同步回 beat_track（beats.json 的 bpm 与
+                # tempo_map 保持一致），source 作 provenance 写入 beats.json
+                bpm, bpm_source = reconcile_bpm(beat_track.beats, beat_track.bpm)
+                if bpm != beat_track.bpm:
+                    beat_track.bpm = bpm
+                if bpm_source != "estimate" or beat_track.tempo_confidence < 0.1:
+                    logger.warning(
+                        "pipeline[2.5/7]: tempo confidence low "
+                        "(conf={c:.3f}, source={src}) — rhythm-derived BPM "
+                        "may be unreliable",
+                        c=beat_track.tempo_confidence, src=bpm_source,
+                    )
                 # tempo
                 tempo = TempoSegment(
                     start_time=0.0,
@@ -143,10 +159,25 @@ class Pipeline:
                     duration=duration if duration > 0 else 1.0,
                     fallback=cfg.rhythm.time_signature_fallback,
                 )
+                # v0.5.3: 小节网格锚定首个 downbeat。此前拍号段从 0.0 起，
+                # 首个 downbeat 不在 0 时（如 moon 2.41s 前奏）小节线整体
+                # 偏移半小节/一拍。score builder 的 bar 网格取
+                # time_signatures[0].start_time 作原点，故直接改首段起点
+                if beat_track.downbeats and time_sigs:
+                    d0 = float(beat_track.downbeats[0])
+                    first = time_sigs[0]
+                    if 1e-3 < d0 < first.end_time:
+                        time_sigs[0] = replace(first, start_time=d0)
+                        logger.info(
+                            "pipeline[2.5/7]: bar grid anchored to first "
+                            "downbeat at {d0:.3f}s",
+                            d0=d0,
+                        )
                 logger.info(
-                    "pipeline[2.5/7]: rhythm: bpm={bpm:.1f}, {n} beats, {d} downbeats, "
-                    "{ts} time-sig segment(s)",
+                    "pipeline[2.5/7]: rhythm: bpm={bpm:.1f} ({src}), {n} beats, "
+                    "{d} downbeats, {ts} time-sig segment(s)",
                     bpm=beat_track.bpm,
+                    src=bpm_source,
                     n=len(beat_track.beats),
                     d=len(beat_track.downbeats),
                     ts=len(time_sigs),
@@ -162,12 +193,18 @@ class Pipeline:
             # 写 beats.json
             # v0.5.2: madmom 失败的 fallback 带 provenance 标记——下游
             # （benchmark/quantize/demo report）能区分"测得 120"与"编造 120"
-            (ws_dir / "beats.json").write_text(json.dumps(
-                beat_track.to_dict() if beat_track
-                else {
+            # v0.5.3: bpm_source 记录 BPM 来源（estimate/octave-corrected/
+            # beats-derived）——被倍频校正过的 BPM 必须有迹可循
+            if beat_track is not None:
+                _beats_payload = beat_track.to_dict()
+                _beats_payload["bpm_source"] = bpm_source
+            else:
+                _beats_payload = {
                     "bpm": 120.0, "beats": [], "downbeats": [],
                     "source": "madmom-failed-fallback",
-                },
+                }
+            (ws_dir / "beats.json").write_text(json.dumps(
+                _beats_payload,
                 ensure_ascii=False, indent=2,
             ))
             (ws_dir / "time_signatures.json").write_text(json.dumps([

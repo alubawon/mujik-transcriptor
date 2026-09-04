@@ -300,3 +300,90 @@ class TestBuildMusicxml:
         # chord_track=None (默认)
         xml = build_musicxml(proj, config=RenderConfig(include_chord_symbols=True))
         assert "<harmony>" not in xml
+
+
+class TestDrumPartMusicxml:
+    """v0.5.3 重写后的鼓 part：结构合法 + 时值一致 + 并击 + rest 补齐。"""
+
+    def _drum_xml(self, notes: list[Note], duration: float = 8.0) -> str:
+        from mujik.score.builder import _build_drum_part_musicxml
+
+        project = _project(
+            {"drums": _track(notes, "drums", channel=9)},
+            duration=duration,
+        )
+        return _build_drum_part_musicxml("P1", "drums", project.tracks["drums"], project)
+
+    def test_attributes_only_in_first_measure(self):
+        notes = [Note(0.0, 0.1, 36, 100, channel=9), Note(2.0, 2.1, 38, 100, channel=9)]
+        xml = self._drum_xml(notes)
+        assert xml.count("<attributes>") == 1
+        assert "percussion" in xml
+
+    def test_no_duplicate_measure_numbers(self):
+        # 8 hits across 0–3.5s → 4/4 @120BPM (bar=2s) → measures 1–2 有内容，
+        # 尾部空小节被丢弃 → 编号 1、2 各出现一次，无重复编号
+        notes = [
+            Note(0.0 + i * 0.5, 0.1 + i * 0.5, 36, 100, channel=9)
+            for i in range(8)
+        ]
+        xml = self._drum_xml(notes, duration=8.0)
+        for num in ('number="1"', 'number="2"'):
+            assert xml.count(num) == 1
+
+    def test_simultaneous_hits_use_chord(self):
+        # kick + snare + hi-hat 同刻 → 首个普通 note + 2 个 <chord/>
+        notes = [
+            Note(0.0, 0.1, 36, 100, channel=9),
+            Note(0.0, 0.1, 38, 100, channel=9),
+            Note(0.0, 0.1, 42, 100, channel=9),
+        ]
+        xml = self._drum_xml(notes, duration=4.0)
+        assert xml.count("<chord/>") == 2
+
+    def test_rests_fill_measures(self):
+        # 每小节 duration 总和 == bar ticks（4/4 @120BPM ppq480 → 1920）
+        import re
+
+        notes = [Note(0.0, 0.1, 36, 100, channel=9)]  # 只有第一拍一击
+        xml = self._drum_xml(notes, duration=4.0)  # 尾部空小节丢弃 → 1 measure
+        measures = re.findall(r"<measure .*?</measure>", xml, re.DOTALL)
+        assert len(measures) == 1
+        durs = [int(d) for d in re.findall(r"<duration>(\d+)</duration>", measures[0])]
+        assert sum(durs) == 1920
+        # 一击 + 补位 rest
+        assert durs[0] < 1920
+        assert len(durs) >= 2
+
+    def test_notehead_x_for_cymbals(self):
+        notes = [Note(0.0, 0.1, 42, 100, channel=9)]  # closed hi-hat
+        xml = self._drum_xml(notes, duration=4.0)
+        assert "<notehead>x</notehead>" in xml
+
+    def test_display_positions_from_gm_map(self):
+        # kick → F4；snare → C5（简化谱位映射）
+        notes = [
+            Note(0.0, 0.1, 36, 100, channel=9),
+            Note(0.5, 0.6, 38, 100, channel=9),
+        ]
+        xml = self._drum_xml(notes, duration=4.0)
+        assert "<display-step>F</display-step>" in xml
+        assert "<display-octave>4</display-octave>" in xml
+        assert "<display-step>C</display-step>" in xml
+
+    def test_type_matches_duration_class(self):
+        # 不再出现固定 quarter 与 50ms duration 矛盾：50ms @120BPM ppq480
+        # ≈ 48 ticks < 240（eighth）→ type=16th
+        import re
+
+        notes = [Note(0.0, 0.05, 36, 100, channel=9)]
+        xml = self._drum_xml(notes, duration=4.0)
+        m = re.search(r"<unpitched>.*?<duration>(\d+)</duration>.*?<type>(\w+)</type>", xml, re.DOTALL)
+        assert m is not None
+        dur, type_str = int(m.group(1)), m.group(2)
+        assert type_str == "16th"
+        assert dur < 240
+
+    def test_empty_drum_track_falls_back_to_empty_part(self):
+        xml = self._drum_xml([], duration=4.0)
+        assert "<rest/>" in xml

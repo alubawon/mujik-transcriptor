@@ -144,8 +144,10 @@ def main():
         best = tempi[np.argmax(tempi[:, 1])]
         bpm = float(best[0])
         strength = float(best[1])
-        # 强度 ∈ [0, 1]，作为置信度
-        tempo_confidence = min(1.0, strength / 100.0)
+        # v0.5.3 修：strength 本身就是 [0,1] 的概率值（所有 tempo 假设的
+        # 直方图归一化强度），原 /100 缩放把它压成 ~0.003 的"恒低置信"谎言，
+        # 下游低置信阈值永远触发或永远没人敢信
+        tempo_confidence = min(1.0, strength)
     else:
         bpm, tempo_confidence = 120.0, 0.0
 

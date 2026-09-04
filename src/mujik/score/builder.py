@@ -24,7 +24,7 @@ from loguru import logger
 
 from mujik.config.schema import RenderConfig
 from mujik.merge.core import merge_tracks
-from mujik.midi.model import Note, Project, StemName, Track, TempoSegment
+from mujik.midi.model import Note, Project, StemName, TempoSegment, Track
 from mujik.score.bend import (
     BendPoint,
     build_bend_elements,
@@ -35,13 +35,10 @@ from mujik.score.time_helpers import (
     bpm_at_time,
     measure_index_at_time,
     seconds_to_ticks,
-    time_signature_at_time,
 )
 from mujik.time_signature.model import (
-    TimeSignatureSegment,
     build_default_segments,
 )
-
 
 LayoutMode = Literal["per_stem", "piano_reduction", "score"]
 
@@ -165,57 +162,142 @@ def _build_empty_part_musicxml(
   </part>"""
 
 
-def _build_drum_part_musicxml(
-    part_id: str, part_name: str, track: Track, project: Project, ppq: int = 480,
-) -> str:
-    """鼓 part：percussion clef + 简化的 unpitched note。"""
-    notes_sorted = sorted(track.notes, key=lambda n: (n.start, -n.velocity))
-    if not notes_sorted:
-        return _build_empty_part_musicxml(part_id, part_name, project, ppq)
+# GM 鼓 note → 五线谱显示位置（percussion clef 简化谱位，保证乐器不重叠可读）。
+# (display_step, display_octave, notehead)；cymbal 类用 x 头。
+# 未列出的 pitch 走 _pitch_to_xml_parts 常规位置。
+GM_DRUM_DISPLAY: dict[int, tuple[str, int, str | None]] = {
+    36: ("F", 4, None),        # Kick
+    38: ("C", 5, None),        # Snare
+    41: ("F", 3, None),        # Low Floor Tom
+    45: ("D", 4, None),        # Mid Tom
+    48: ("B", 4, None),        # High Tom
+    42: ("G", 5, "x"),         # Closed Hi-Hat
+    46: ("G", 5, "circle-x"),  # Open Hi-Hat
+    49: ("A", 5, "x"),         # Crash
+    51: ("E", 5, "x"),         # Ride
+}
 
-    measure_groups = _group_notes_by_measure(notes_sorted, project, ppq)
-    measure_xmls: list[str] = []
-    for mi, mnotes in enumerate(measure_groups):
-        note_xmls = []
-        for note in mnotes:
-            step, alter, octave = _pitch_to_xml_parts(note.pitch)
-            dur = seconds_to_ticks(note.end - note.start, project.time_signatures[0], bpm_at_time(note.start, project.tempo_map), ppq)
-            note_xmls.append(
-                f"""        <note>
+
+def _drum_rest_xml(dur_ticks: int, ppq: int) -> str:
+    """鼓小节内的补位 rest（duration 与 type 由 ticks 推导）。"""
+    type_str = _ticks_to_type(dur_ticks, ppq)
+    return f"""        <note>
+          <rest/>
+          <duration>{dur_ticks}</duration>
+          <voice>1</voice>
+          <type>{type_str}</type>
+        </note>"""
+
+
+def _drum_note_xml(note: Note, dur_ticks: int, ppq: int, is_chord: bool) -> str:
+    """单个鼓 note（unpitched）；is_chord=True 时是同刻并击的后续乐器。"""
+    disp = GM_DRUM_DISPLAY.get(note.pitch)
+    if disp is not None:
+        step, octave, head = disp
+    else:
+        step, _alter, octave = _pitch_to_xml_parts(note.pitch)
+        head = None
+    chord_xml = "\n          <chord/>" if is_chord else ""
+    head_xml = f"\n          <notehead>{head}</notehead>" if head else ""
+    type_str = _ticks_to_type(dur_ticks, ppq)
+    return f"""        <note>{chord_xml}
           <unpitched>
             <display-step>{step}</display-step>
             <display-octave>{octave}</display-octave>
           </unpitched>
-          <duration>{max(1, dur)}</duration>
+          <duration>{dur_ticks}</duration>
           <voice>1</voice>
-          <type>quarter</type>
+          <type>{type_str}</type>{head_xml}
         </note>"""
+
+
+def _build_drum_part_musicxml(
+    part_id: str, part_name: str, track: Track, project: Project, ppq: int = 480,
+) -> str:
+    """鼓 part：percussion clef + unpitched note（v0.5.3 重写）。
+
+    旧版硬伤（鼓谱面渲染崩坏的根因）：
+    - 每 measure 重复完整 <attributes>（非法结构）
+    - 固定 <type>quarter</type> 与实际 duration 自相矛盾
+    - 小节不补 rest，时长与拍号规定不符
+    - 同刻多乐器顺序堆叠（无 <chord/>），小节被撑爆
+    - part 开头多一个空的 measure 1，与后续 measure 编号重复
+
+    新版：attributes 仅在首小节；type 从 duration 推导；rest 补齐小节；
+    同刻（<10ms）多乐器用 <chord/> 并击；谱位按 GM_DRUM_DISPLAY 映射。
+    """
+    notes_sorted = sorted(track.notes, key=lambda n: (n.start, n.pitch))
+    if not notes_sorted:
+        return _build_empty_part_musicxml(part_id, part_name, project, ppq)
+
+    seg = (
+        project.time_signatures[0]
+        if project.time_signatures
+        else build_default_segments(max(project.duration, 10.0))[0]
+    )
+    bpm = bpm_at_time(0.0, project.tempo_map)
+    bar_dur_sec = seg.bar_duration_sec(bpm)
+    bar_ticks = max(1, int(round(bar_dur_sec * bpm * ppq / 60.0)))
+    sig = seg.time_signature
+
+    measure_groups = _group_notes_by_measure(notes_sorted, project, ppq)
+    measure_xmls: list[str] = []
+    for mi, mnotes in enumerate(measure_groups):
+        measure_start = seg.start_time + mi * bar_dur_sec
+
+        # 同刻并击聚类（<10ms 视为同一击打的多乐器，如 kick+snare+hat）
+        clusters: list[list[Note]] = []
+        for note in mnotes:
+            if clusters and note.start - clusters[-1][0].start < 0.01:
+                clusters[-1].append(note)
+            else:
+                clusters.append([note])
+
+        note_xmls: list[str] = []
+        cursor = 0  # 本小节已填充的 ticks
+        for cluster in clusters:
+            lead = cluster[0]
+            onset_ticks = seconds_to_ticks(
+                max(0.0, lead.start - measure_start), seg, bpm, ppq,
             )
-        notes_str = "\n".join(note_xmls)
-        sig = project.time_signatures[0].time_signature if project.time_signatures else (4, 4)
+            onset_ticks = min(onset_ticks, bar_ticks)
+            gap = onset_ticks - cursor
+            if gap > 0:
+                note_xmls.append(_drum_rest_xml(gap, ppq))
+            # 击打时长：取 cluster 内最长者，截断到小节尾
+            cluster_end = max(n.end for n in cluster)
+            dur = seconds_to_ticks(
+                max(0.0, min(cluster_end, measure_start + bar_dur_sec) - lead.start),
+                seg, bpm, ppq,
+            )
+            dur = max(1, min(dur, bar_ticks - onset_ticks))
+            for j, note in enumerate(cluster):
+                note_xmls.append(_drum_note_xml(note, dur, ppq, is_chord=(j > 0)))
+            cursor = onset_ticks + dur
+        if bar_ticks - cursor > 0:
+            note_xmls.append(_drum_rest_xml(bar_ticks - cursor, ppq))
+
+        notes_str = "\n".join(note_xmls) if note_xmls else _drum_rest_xml(bar_ticks, ppq)
+        # v0.5.3: <attributes> 仅首小节；旧版每小节重复且额外多一个空 measure 1
+        head_xml = ""
+        if mi == 0:
+            head_xml = (
+                f"      <attributes>\n"
+                f"        <divisions>{ppq}</divisions>\n"
+                f"        <key><fifths>0</fifths></key>\n"
+                f"        <time><beats>{sig[0]}</beats><beat-type>{sig[1]}</beat-type></time>\n"
+                f"        <clef><sign>percussion</sign><line>2</line></clef>\n"
+                f"      </attributes>\n"
+                f"{_tempo_directive_xml(project.tempo_map)}"
+            )
         measure_xmls.append(
             f"""    <measure number="{mi + 1}">
-      <attributes>
-        <divisions>{ppq}</divisions>
-        <key><fifths>0</fifths></key>
-        <time><beats>{sig[0]}</beats><beat-type>{sig[1]}</beat-type></time>
-        <clef><sign>percussion</sign><line>2</line></clef>
-      </attributes>
-      {_tempo_directive_xml(project.tempo_map)}
-{notes_str}
+{head_xml}{notes_str}
     </measure>"""
         )
     measures_str = "\n".join(measure_xmls)
     return f"""  <part id="{part_id}">
-    <measure number="1">
-      <attributes>
-        <divisions>{ppq}</divisions>
-        <key><fifths>0</fifths></key>
-        <time><beats>{project.time_signatures[0].time_signature[0] if project.time_signatures else 4}</beats><beat-type>{project.time_signatures[0].time_signature[1] if project.time_signatures else 4}</beat-type></time>
-        <clef><sign>percussion</sign><line>2</line></clef>
-      </attributes>
-    </measure>
-    {measures_str}
+{measures_str}
   </part>"""
 
 

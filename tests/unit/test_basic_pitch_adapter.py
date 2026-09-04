@@ -11,6 +11,7 @@ from mujik.transcribe.basic_pitch_adapter import (
     BASIC_PITCH_CLI,
     BasicPitchAdapterError,
     check_basic_pitch_available,
+    denoise_bend,
     resolve_basic_pitch_cli,
     transcribe_with_basic_pitch,
 )
@@ -249,14 +250,15 @@ class TestTranscribe:
             csv_path.parent.mkdir(parents=True, exist_ok=True)
             with open(csv_path, "w") as f:
                 f.write("start_time_s,end_time_s,pitch_midi,velocity,pitch_bend\n")
-                f.write("0.0,1.0,60,100,1,2,0\n")
+                # 前导 0（无 bend）→ +1 semitone 4 帧 → +2 semitone 4 帧
+                f.write("0.0,1.0,60,100," + ",".join(["0", "0"] + ["1"] * 4 + ["2"] * 4) + "\n")
             return MagicMock(returncode=0, stderr="", stdout="ok")
 
         with patch("subprocess.run", side_effect=fake_run):
             notes = transcribe_with_basic_pitch(audio, out_dir=tmp_path)
 
         assert len(notes) == 1
-        assert notes[0].pitch_bend == (0.5, 1.0, 0.0)
+        assert notes[0].pitch_bend == (0.5, 0.5, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0)
 
 
 class TestErrorPaths:
@@ -293,3 +295,43 @@ class TestErrorPaths:
             mock_run.return_value = MagicMock(returncode=0)
             with pytest.raises(BasicPitchAdapterError, match="output csv not found"):
                 transcribe_with_basic_pitch(audio, out_dir=tmp_path)
+
+
+class TestDenoiseBend:
+    """v0.5.3: 逐帧 bend 去噪。"""
+
+    def test_strips_leading_trailing_zeros(self):
+        # 首尾 0 段剥掉后剩 +0.5×3 / −0.5×3 两段，均达段长下限
+        assert denoise_bend([0, 0.5, 0.5, 0.5, -0.5, -0.5, -0.5, 0]) == (
+            0.5, 0.5, 0.5, -0.5, -0.5, -0.5,
+        )
+
+    def test_zero_only_after_strip_leaves_constant(self):
+        # 剥掉首尾 0 后只剩恒定段 → 按"音高偏差"规则丢弃
+        assert denoise_bend([0, 0, 0.5, 0.5, 0, 0]) == ()
+
+    def test_drops_short_jitter_segments(self):
+        # 1 帧 +1 / 2 帧 -1 的抖动段全部 < 3 帧下限 → 丢弃
+        assert denoise_bend([0.5, -0.5, -0.5, 0.5]) == ()
+
+    def test_keeps_long_vibrato(self):
+        # +1/−1 各 4 帧：合法颤音保留
+        values = [0.5] * 4 + [-0.5] * 4
+        assert denoise_bend(values) == tuple(values)
+
+    def test_drops_constant_nonzero(self):
+        # 全程同一值 → 音高识别偏差而非 bend
+        assert denoise_bend([1.0] * 10) == ()
+
+    def test_drops_all_zero(self):
+        assert denoise_bend([0.0] * 10) == ()
+
+    def test_drops_below_total_frames(self):
+        # 两段各 2 帧：段长达标与否取决于 min_segment_frames，总帧数可控丢弃
+        values = [0.5, 0.5, 1.0, 1.0]
+        assert denoise_bend(values, min_segment_frames=2, min_total_frames=4) == (0.5, 0.5, 1.0, 1.0)
+        assert denoise_bend(values, min_segment_frames=2, min_total_frames=5) == ()
+
+    def test_empty(self):
+        assert denoise_bend([]) == ()
+        assert denoise_bend(()) == ()

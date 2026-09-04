@@ -27,8 +27,28 @@ transcribe:
   piano: "bytedance-piano"
   guitar: "apollo"
   other: "basic-pitch"
-  onset_interval_min_ms: 50.0
   min_note_length_ms: 50.0
+  # v0.5.3: basic-pitch 全局配置 + per-stem 覆盖（stem_basic_pitch 优先）。
+  # v0.5.3: 删除 onset_interval_min_ms——router 曾把它除以 100 冒充
+  # onset 概率阈值（类型说谎），现阈值在 basic_pitch/stem_basic_pitch 里直配
+  basic_pitch:
+    onset_threshold: 0.5
+    frame_threshold: 0.3
+    min_note_length_ms: 50.0
+    min_frequency: null      # Hz；null = 不限
+    max_frequency: null
+  stem_basic_pitch:
+    vocals:
+      min_frequency: 130.0   # 人声基频带 ~C3-C6，滤 bass 低频泄漏
+      max_frequency: 1050.0
+    bass:
+      min_frequency: 27.0    # 低音乐器带，防高频泄漏出幻觉 note
+      max_frequency: 440.0
+      onset_threshold: 0.6
+    other:                   # 残渣混合 stem：双阈值 + 更长最短时值
+      onset_threshold: 0.6
+      frame_threshold: 0.4
+      min_note_length_ms: 100.0
 
 rhythm:
   # v0.5.2：schema Literal 收窄到实际实现，设其他值在加载期即报错

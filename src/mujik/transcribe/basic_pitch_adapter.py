@@ -22,6 +22,73 @@ from mujik.midi.model import Note
 
 BASIC_PITCH_CLI = "basic-pitch"
 
+# bend 去噪参数（v0.5.3）
+# basic-pitch 的 pitch_bend 是逐帧 semitone 整数，大量 note 带全量逐帧抖动
+# （buhee 实测 66484 个 bend 事件 vs 6090 note）——绝大多数是模型噪声而非
+# 演奏细节，全量渲染会撑爆 MusicXML/PDF
+_MIN_BEND_SEGMENT_FRAMES = 3   # 单个连续段至少 3 帧才算有意 bend
+_MIN_BEND_TOTAL_FRAMES = 4     # 去噪后总帧数不足则整个丢弃
+
+
+def denoise_bend(
+    values: list[float] | tuple[float, ...],
+    min_segment_frames: int = _MIN_BEND_SEGMENT_FRAMES,
+    min_total_frames: int = _MIN_BEND_TOTAL_FRAMES,
+) -> tuple[float, ...]:
+    """逐帧 bend 序列去噪。
+
+    步骤：
+      1. 去掉首尾的 0 段（"无 bend" 帧）
+      2. 合并连续同值段
+      3. 丢弃短于 min_segment_frames 的段（逐帧抖动）
+      4. 剩余总帧数 < min_total_frames → 整个丢弃（视为噪声）
+      5. 恒定值序列（全程同一非零值）也丢弃——那是音高识别偏差而非 bend，
+         渲染成静态 bend 只会把音准画歪
+
+    Returns:
+        去噪后的逐帧 bend（可能为空 tuple）。
+    """
+    if not values:
+        return ()
+
+    # 1. strip 首尾 0
+    lo, hi = 0, len(values)
+    while lo < hi and abs(values[lo]) < 1e-9:
+        lo += 1
+    while hi > lo and abs(values[hi - 1]) < 1e-9:
+        hi -= 1
+    core = values[lo:hi]
+    if not core:
+        return ()
+
+    # 2. 连续同值段
+    segments: list[tuple[float, int]] = []  # (value, count)
+    for v in core:
+        if segments and abs(segments[-1][0] - v) < 1e-9:
+            segments[-1] = (segments[-1][0], segments[-1][1] + 1)
+        else:
+            segments.append((v, 1))
+
+    # 恒定值（单段）→ 音高偏差而非 bend
+    if len(segments) == 1:
+        return ()
+
+    # 3. 丢短段；全被丢掉也返回空
+    kept = [(v, c) for v, c in segments if c >= min_segment_frames]
+    if not kept:
+        return ()
+
+    # 4. 总帧数下限
+    total = sum(c for _, c in kept)
+    if total < min_total_frames:
+        return ()
+
+    # 展开回逐帧（保留被保留段的原始重复）
+    out: list[float] = []
+    for v, c in kept:
+        out.extend([v] * c)
+    return tuple(out)
+
 
 class BasicPitchAdapterError(RuntimeError):
     pass
@@ -152,14 +219,15 @@ def transcribe_with_basic_pitch(
             # 以逗号续在同一行（DictReader 把多出来的列放进 row[None]），
             # 不再是 JSON list。semitone → mujik 的 [-1,+1] 满量程：除以 2
             # （默认 bend range ±2 semitones）
+            # v0.5.3: 逐帧 bend 去噪（抖动段/恒定值丢弃），见 denoise_bend
             pitch_bend: tuple[float, ...] = ()
             bend_values = [row.get("pitch_bend", ""), *(row.get(None) or [])]
             bend_values = [v for v in bend_values if v not in (None, "")]
             if bend_values:
                 try:
-                    pitch_bend = tuple(
+                    pitch_bend = denoise_bend([
                         max(-1.0, min(1.0, float(v) / 2.0)) for v in bend_values
-                    )
+                    ])
                 except (ValueError, TypeError) as e:
                     logger.debug("basic-pitch: skip pitch_bend parse: {}", e)
 
@@ -184,6 +252,7 @@ __all__ = [
     "transcribe_with_basic_pitch",
     "check_basic_pitch_available",
     "resolve_basic_pitch_cli",
+    "denoise_bend",
     "BasicPitchAdapterError",
     "BASIC_PITCH_CLI",
 ]

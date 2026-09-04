@@ -230,3 +230,56 @@ class TestTranscribeFailures:
         project = self._run(cfg, side_effect=flaky)
         assert "vocals" not in project.tracks or not project.tracks["vocals"].notes
         assert len(project.tracks["drums"].notes) == 1
+
+
+class TestBpmReconciliation:
+    """v0.5.3: madmom 半速估计被拍点数组校正 + 小节网格锚定 downbeat。"""
+
+    def _run(self, tmp_path: Path, beat_track: BeatTrack):
+        audio = tmp_path / "song.wav"
+        audio.write_bytes(b"RIFF")
+        cfg = _base_cfg(tmp_path)
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
+             patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
+             patch("mujik.pipeline.track_beats_with_madmom", return_value=beat_track), \
+             patch("soundfile.info") as mock_info:
+            mock_info.return_value = MagicMock(duration=5.0, samplerate=44100)
+            project = Pipeline(cfg).run()
+        beats = json.loads((tmp_path / "out" / "ws" / "beats.json").read_text())
+        ts = json.loads((tmp_path / "out" / "ws" / "time_signatures.json").read_text())
+        return project, beats, ts
+
+    def test_half_tempo_estimate_corrected(self, tmp_path: Path):
+        # 估计 62.5，拍点 0.5s 间隔（125 BPM）→ tempo_map 应为 125
+        bt = BeatTrack(
+            beats=[i * 0.48 for i in range(10)],
+            downbeats=[0.0, 1.92, 3.84],
+            bpm=62.5,
+            tempo_confidence=0.4,
+        )
+        project, beats, _ = self._run(tmp_path, bt)
+        assert project.tempo_map[0].bpm == 125.0
+        assert beats["bpm"] == 125.0
+        assert beats["bpm_source"] == "octave-corrected"
+
+    def test_consistent_estimate_kept(self, tmp_path: Path):
+        bt = BeatTrack(
+            beats=[i * 0.5 for i in range(10)],
+            downbeats=[0.0, 2.0, 4.0],
+            bpm=120.0,
+            tempo_confidence=0.9,
+        )
+        _, beats, _ = self._run(tmp_path, bt)
+        assert beats["bpm"] == 120.0
+        assert beats["bpm_source"] == "estimate"
+
+    def test_bar_grid_anchored_to_first_downbeat(self, tmp_path: Path):
+        # 首个 downbeat 不在 0（前奏）→ 拍号段起点应锚定到它
+        bt = BeatTrack(
+            beats=[0.5 + i * 0.5 for i in range(9)],
+            downbeats=[2.5, 4.5],
+            bpm=120.0,
+            tempo_confidence=0.9,
+        )
+        _, beats, ts = self._run(tmp_path, bt)
+        assert ts[0]["start"] == pytest.approx(2.5)

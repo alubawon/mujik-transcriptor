@@ -7,7 +7,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 class SourceSeparationConfig(BaseModel):
@@ -43,6 +43,51 @@ class PreprocessConfig(BaseModel):
     demucs_device: Literal["cuda", "cpu", "mps"] = "cpu"
 
 
+class BasicPitchConfig(BaseModel):
+    """Spotify basic-pitch 配置（subprocess 调用）。"""
+
+    onset_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    frame_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
+    min_note_length_ms: float = Field(default=50.0, ge=0.0, le=1000.0)
+    min_frequency: float | None = Field(default=None, ge=20.0, le=2000.0)
+    # v0.5.3: 下限 2000 → 20——bass stem 需要 max_frequency≈440，
+    # 原 ge=2000 使低频带配置根本写不进来
+    max_frequency: float | None = Field(default=None, ge=20.0, le=8000.0)
+    timeout_sec: int = Field(default=1800, ge=60, le=7200)
+
+    @model_validator(mode="after")
+    def _freq_band_valid(self) -> BasicPitchConfig:
+        if (
+            self.min_frequency is not None
+            and self.max_frequency is not None
+            and self.min_frequency >= self.max_frequency
+        ):
+            raise ValueError(
+                f"min_frequency ({self.min_frequency}) must be < "
+                f"max_frequency ({self.max_frequency})"
+            )
+        return self
+
+
+def _default_stem_basic_pitch() -> dict[str, BasicPitchConfig]:
+    """per-stem basic-pitch 默认覆盖（v0.5.3）。
+
+    - vocals: 人声基频带 ~C3-C6，滤掉低频泄漏（bass 串音出幻觉低音 note）
+    - bass:   低音乐器带 27-440Hz，防高频泄漏出幻觉高音 note；onset 阈值
+              提高到 0.6（低频 onset 密度大，0.5 易碎碎念）
+    - other:  残渣混合 stem，0.6/0.4 双阈值 + 100ms 最短时值压噪声
+    """
+    return {
+        "vocals": BasicPitchConfig(min_frequency=130.0, max_frequency=1050.0),
+        "bass": BasicPitchConfig(
+            min_frequency=27.0, max_frequency=440.0, onset_threshold=0.6,
+        ),
+        "other": BasicPitchConfig(
+            onset_threshold=0.6, frame_threshold=0.4, min_note_length_ms=100.0,
+        ),
+    }
+
+
 class TranscribeConfig(BaseModel):
     """转录配置：按 stem 路由到不同转录器。"""
 
@@ -62,21 +107,22 @@ class TranscribeConfig(BaseModel):
     guitar: str = "apollo"
     other: str = "basic-pitch"
 
-    onset_interval_min_ms: float = Field(default=50.0, ge=10.0, le=500.0)
     min_note_length_ms: float = Field(default=50.0, ge=10.0, le=1000.0)
+
+    # v0.5.3: basic-pitch 全局配置 + per-stem 覆盖。
+    # stem_basic_pitch 里的 stem 用各自配置，未列出的用 basic_pitch。
+    # 默认给 vocals/bass/other 设频率带与阈值（见 _default_stem_basic_pitch）
+    basic_pitch: BasicPitchConfig = Field(default_factory=BasicPitchConfig)
+    stem_basic_pitch: dict[str, BasicPitchConfig] = Field(
+        default_factory=_default_stem_basic_pitch,
+    )
+
     # v0.5.2: 删除 polyphonic_threshold/velocity_threshold/max_polyphony——
     # 从未有任何 adapter 消费（配置说谎）；需要时随实现一起加回
-
-
-class BasicPitchConfig(BaseModel):
-    """Spotify basic-pitch 配置（subprocess 调用）。"""
-
-    onset_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
-    frame_threshold: float = Field(default=0.3, ge=0.0, le=1.0)
-    min_note_length_ms: float = Field(default=50.0, ge=0.0, le=1000.0)
-    min_frequency: float | None = Field(default=None, ge=20.0, le=2000.0)
-    max_frequency: float | None = Field(default=None, ge=2000.0, le=8000.0)
-    timeout_sec: int = Field(default=1800, ge=60, le=7200)
+    # v0.5.3: 删除 onset_interval_min_ms——唯一消费者是 router 里
+    # `onset_threshold = onset_interval_min_ms / 100`，把毫秒时间参数
+    # 除以 100 冒充 0-1 概率阈值（默认 50→0.5 恰好撞对，掩盖了类型说谎；
+    # 用户改 80 → onset_threshold 变 0.8，语义完全失控）
 
 
 class DrumScriptConfig(BaseModel):
@@ -208,7 +254,7 @@ class PipelineConfig(BaseModel):
         return v
 
     @classmethod
-    def from_yaml(cls, path: str | Path) -> "PipelineConfig":
+    def from_yaml(cls, path: str | Path) -> PipelineConfig:
         """从 YAML 加载配置。"""
         import yaml
         with open(path) as f:
@@ -226,7 +272,7 @@ class PipelineConfig(BaseModel):
                 allow_unicode=True,
             )
 
-    def apply_preset(self, preset: str) -> "PipelineConfig":
+    def apply_preset(self, preset: str) -> PipelineConfig:
         """应用预设（覆盖部分字段）。"""
         import copy
         cfg = copy.deepcopy(self)
