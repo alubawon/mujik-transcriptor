@@ -236,8 +236,12 @@ class PipelineConfig(BaseModel):
             cfg.source_separation.model = "demucs"
             cfg.quantize.groove_template = "straight"
         elif preset == "jazz":
-            cfg.source_separation.stem_count = 5
-            cfg.source_separation.model = "mdx23c"
+            # v0.5.2 修：原来写 model=mdx23c + stem_count=5，但 Roformer 后端
+            # 未实现、被 demucs 路由静默忽略（配置说谎）。jazz 的真实差异化
+            # 在 chord + swing16 groove，分离走主线 4-stem demucs；
+            # 5-stem(piano) 待 Roformer/6-stem 集成后再切。
+            cfg.source_separation.stem_count = 4
+            cfg.source_separation.model = "demucs"
             cfg.quantize.groove_template = "swing16"
             cfg.chord.enabled = True
         elif preset == "metal":

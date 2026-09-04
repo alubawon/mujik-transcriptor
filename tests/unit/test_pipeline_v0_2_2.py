@@ -71,7 +71,7 @@ class TestRhythmEnabled:
         audio.write_bytes(b"RIFF")
         cfg = _base_cfg(tmp_path)
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
              patch("soundfile.info") as mock_info:
@@ -90,7 +90,7 @@ class TestRhythmEnabled:
         audio.write_bytes(b"RIFF")
         cfg = _base_cfg(tmp_path)
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
              patch("soundfile.info") as mock_info:
@@ -108,7 +108,7 @@ class TestRhythmEnabled:
         audio.write_bytes(b"RIFF")
         cfg = _base_cfg(tmp_path)
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
              patch("soundfile.info") as mock_info:
@@ -125,7 +125,7 @@ class TestRhythmEnabled:
         audio.write_bytes(b"RIFF")
         cfg = _base_cfg(tmp_path)
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
              patch("soundfile.info") as mock_info:
@@ -148,7 +148,7 @@ class TestRhythmFailure:
             from mujik.rhythm.madmom_adapter import MadmomAdapterError
             raise MadmomAdapterError("simulated fail")
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=fake_fail), \
              patch("soundfile.info") as mock_info:
@@ -172,7 +172,7 @@ class TestRhythmDisabled:
             rhythm=__import__("mujik.config.schema", fromlist=["RhythmConfig"]).RhythmConfig(enabled=False),
         )
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom) as mock_bt, \
              patch("soundfile.info") as mock_info:

@@ -160,10 +160,11 @@ mujik run --input jazz_take.wav --output out_jazz/ --preset jazz
 # jazz preset 默认开启 chord + chord.quantize，gpt-2.7B chord quality
 ```
 
-### 3. 金属 preset（开 6-stem Demucs + ByteDance piano）
+### 3. 金属 preset（32 分细网格 + 直拍）
 ```bash
 mujik run --input metal_track.wav --output out_metal/ --preset metal
-# metal preset 用 htdemucs_6s，多出 piano/guitar 两轨
+# v0.5.2 修：preset 不再声明未实现的后端。需要 6-stem（piano/guitar 轨）
+# 显式配置：source_separation.variant=htdemucs_6s
 ```
 
 ### 4. 多乐器一次转（MuScriptor，替代 4-stem）

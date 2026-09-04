@@ -86,9 +86,9 @@ def cmd_render(args: argparse.Namespace) -> int:
 
 def cmd_separate(args: argparse.Namespace) -> int:
     """仅跑源分离（调试用）。"""
-    from mujik.separate.demucs_adapter import separate_with_demucs
+    from mujik.separate.router import separate_audio
 
-    stems = separate_with_demucs(args.input, args.output)
+    stems = separate_audio(args.input, args.output)
     for name, stem in stems.stems.items():
         logger.info("  - {}: {}", name, stem.audio_path)
     return 0

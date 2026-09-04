@@ -25,8 +25,8 @@ from mujik.pipeline_progress import PipelineProgress
 from mujik.preprocess.loudnorm import normalize_loudness
 from mujik.rhythm.madmom_adapter import track_beats_with_madmom
 from mujik.rhythm.time_signature import infer_time_signature_from_downbeats
-from mujik.separate.demucs_adapter import separate_with_demucs
 from mujik.separate.model import Stems
+from mujik.separate.router import separate_audio
 from mujik.time_signature.model import build_default_segments
 from mujik.transcribe.router import transcribe_stem
 
@@ -365,13 +365,15 @@ class Pipeline:
             prog.__exit__(None, None, None)
             return project
 
-        # ---- 3. Demucs 4-stem 分离（per_stem 模式）----
+        # ---- 3. 源分离（v0.5.2 起走 router：demucs/htdemucs_6s 按 config 派发；
+        #      Roformer 家族 fail-loud，不再静默降级）----
         stems_out_dir = ws_dir / "stems"
-        stems: Stems = separate_with_demucs(
+        stems: Stems = separate_audio(
             sep_input, stems_out_dir, config=cfg.source_separation,
         )
         logger.info(
-            "pipeline[3/7]: demucs done, {n} stems ({names})",
+            "pipeline[3/7]: separation done ({model}), {n} stems ({names})",
+            model=stems.separation_model,
             n=stems.stem_count, names=list(stems.names),
         )
         prog.advance("demucs", extra=f"{stems.stem_count} stems")

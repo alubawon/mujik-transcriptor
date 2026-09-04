@@ -78,7 +78,10 @@ source_separation:
         cfg = PipelineConfig(input_path="x.wav", output_dir="./o")
         cfg2 = cfg.apply_preset("jazz")
         assert cfg2.preset == "jazz"
-        assert cfg2.source_separation.stem_count == 5
+        # v0.5.2 修：原 mdx23c/stem_count=5 从未生效（Roformer 未实现，
+        # 被 demucs 路由静默忽略）——preset 必须说真话
+        assert cfg2.source_separation.stem_count == 4
+        assert cfg2.source_separation.model == "demucs"
         assert cfg2.quantize.groove_template == "swing16"
         assert cfg2.chord.enabled is True
 
