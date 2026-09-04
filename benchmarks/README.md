@@ -66,6 +66,27 @@ PYTHONPATH=src python benchmarks/run_transcription.py \
 
 - ✅ ~~v0.5: framework + synthetic baseline~~（v0.5.0 落地）
 - ✅ ~~v0.5.2: 真实数据 benchmark~~（`--dataset local` manifest 驱动）
-- 标准公开数据集（MUSDB18 分离 museval SDR / MAPS 钢琴 / Billboard 和弦）按 PR 引入
+- ✅ ~~v0.5.2: 分离质量 benchmark~~（`separation.py`，MUSDB18 + museval SDR/SIR/SAR，见下）
+- 标准公开数据集（MAPS 钢琴 / Billboard 和弦）按 PR 引入
 - 评测项对照 [research.md §6 本地 benchmark 清单](../docs/research.md#6-本地-benchmark-清单)
   （优先级 1+2+3+6：分离 SDR / 多音转录 F1 / 鼓转录 / 演奏细节 f0-vs-MIDI）
+
+## Separation benchmark（MUSDB18 + museval，v0.5.2）
+
+仓库不携带 MUSDB18（research-only 许可），先自行下载
+[MUSDB18 / MUSDB18-HQ](https://sigsep.github.io/datasets/musdb.html)：
+
+```bash
+uv pip install 'mujik-transcriptor[separation-bench]'
+
+# MUSDB18-HQ（wav，推荐，无需 ffmpeg）
+.venv/bin/python -m mujik.benchmarks.separation \
+  --musdb-root ~/data/musdb18-hq --is-wav \
+  --variant htdemucs_ft --device cpu --limit 3 \
+  --output sep_bench.md --json sep_bench.json
+
+# 压缩版 MUSDB18（.mp4 stems，解码需 ffmpeg）：去掉 --is-wav
+```
+
+输出 per-stem（vocals/drums/bass/other）median SDR/SIR/SAR + per-track 明细。
+分离复用 `mujik.separate.router.separate_audio`（variant 可换 htdemucs_6s）。

@@ -285,8 +285,11 @@ guitar 轨：Apollo
 落地前在自家曲库上跑一遍（每项 5-10 首代表曲）：
 
 1. **Demucs 4-stem 评估**：museval 在 5 类（流行/摇滚/爵士/金属/电子）各 2 首上算 SDR/SIR/SAR
+   —— ✅ v0.5.2 工具就绪：`python -m mujik.benchmarks.separation --musdb-root ... --is-wav`（MUSDB18 自行下载）
 2. **多音转录对比**：basic-pitch vs ByteDance piano vs Apollo 在爵士钢琴/失真吉他片段的 onset+offset+velocity F1
+   —— 工具就绪（v0.5.2）：`python -m mujik.benchmarks.runner --dataset local --data-dir <标注曲库>`
 3. **鼓转录对比**：adtof vs Omnizart vs DrumTransformer 在金属 blast beat + 爵士 ghost note 片段的 F1
+   —— v0.5.2 起 adtof 已弃用（死链+CC-BY-NC-SA），现为 DrumScript；候选对比 Omnizart
 4. **时间签名边界测试**：11/8、13/8、变拍子片段的 ResNet18 输出 + downbeat 距离推断对比
 5. **和弦扩展性测试**：爵士 maj9/m11/13/alt 和弦片段的 BTC-HCQT vs Chord-CNN-LSTM root/quality 准确率
 6. **演奏细节保留**：原始音频 f0 vs 转录 MIDI note + 注入 pitch bend 的频谱差异

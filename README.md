@@ -131,7 +131,7 @@ WAV/FLAC/MP3
 | 渲染主线 | Verovio (BSD) | ✅ v0.2.4 |
 | 渲染精细 | LilyPond (GPL 隔离) | 🧪 v0.3 |
 | 渲染快速 | MuseScore (GPL 隔离) | 🧪 v0.3 |
-| Benchmark 框架 | synthetic 5-genre | ✅ v0.5.0（v0.5.2 + 本地真实曲库 manifest）|
+| Benchmark 框架 | synthetic 5-genre | ✅ v0.5.0（v0.5.2 + 本地真实曲库 manifest + MUSDB18 分离 SDR）|
 
 ## 文档
 
@@ -217,6 +217,11 @@ python -m mujik.benchmarks.runner --dataset local --data-dir my_bench/ \
 
 # 输出 bench.md + bench.json（per-genre + overall：
 # note F1 / beat CMLt / chord majmin）
+
+# 分离质量 benchmark（MUSDB18 + museval SDR/SIR/SAR，需自行下载数据）
+uv pip install 'mujik-transcriptor[separation-bench]'
+python -m mujik.benchmarks.separation --musdb-root ~/data/musdb18-hq \
+  --is-wav --variant htdemucs_ft --limit 3 --output sep_bench.md
 ```
 
 ## 许可证

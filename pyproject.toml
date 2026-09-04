@@ -108,8 +108,14 @@ benchmark = [
   "mir_eval>=0.7",  # beat/chord/onset metrics
   "numpy>=1.26,<2.0",
 ]
+# v0.5.2: 分离质量 benchmark（MUSDB18 + museval SDR/SIR/SAR）
+# MUSDB18 数据需用户自行下载（research-only 许可，仓库不携带）
+separation-bench = [
+  "musdb>=0.4",    # MUSDB18 读取（.mp4 需 ffmpeg，HQ wav 版不需要）
+  "museval>=0.4",  # SiSEC 标准 SDR/SIR/SAR
+]
 all = [
-  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,transcribe-drumscript,preprocess-denoise,render,chord,benchmark]",
+  "mujik-transcriptor[core-io,loudnorm,midi,separate,transcribe,transcribe-tf,transcribe-drumscript,preprocess-denoise,render,chord,benchmark,separation-bench]",
 ]
 dev = [
   "pytest>=7.4",
