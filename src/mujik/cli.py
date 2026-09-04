@@ -12,6 +12,8 @@ from pathlib import Path
 
 from loguru import logger
 
+from mujik import __version__
+
 
 def cmd_run(args: argparse.Namespace) -> int:
     """运行管线。"""
@@ -246,22 +248,22 @@ def cmd_multitrack(args: argparse.Namespace) -> int:
 
     # 写 project.mid + project.json
     from mujik.midi.io import write_project_to_midi
-    from mujik.time_signature.model import build_default_segments
     from mujik.midi.model import TempoSegment
+    from mujik.time_signature.model import build_default_segments
     # 兜底：muscriptor 输出可能没 time_signatures
     if not project.time_signatures:
         project.time_signatures = build_default_segments(project.duration or 1.0)
     if not project.tempo_map:
         project.tempo_map = [TempoSegment(0.0, project.duration or 1.0, 120.0)]
     project.metadata.update({
-        "mujik_version": "0.4.2",
+        "mujik_version": __version__,
         "transcribe_mode": "multitrack",
         "muscriptor_model": args.model,
     })
     write_project_to_midi(project, out_dir / "project.mid")
     (out_dir / "project.json").write_text(
         json.dumps({
-            "mujik_version": "0.4.2",
+            "mujik_version": __version__,
             "transcribe_mode": "multitrack",
             "muscriptor_model": args.model,
             "tracks": list(project.tracks.keys()),

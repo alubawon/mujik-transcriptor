@@ -66,7 +66,8 @@ fi
 # --- 环境探测（整脚本一次）---
 HAS_MUJIK=0
 command -v mujik >/dev/null 2>&1 && HAS_MUJIK=1
-HAS_VEROVIO=0; command -v verovio >/dev/null 2>&1 && HAS_VEROVIO=1
+# verovio 能力 = python 包（verovio 无独立 CLI 可执行；SVG→PDF 走 mujik render 内部管线）
+HAS_VEROVIO=0; python3 -c "import verovio" 2>/dev/null && HAS_VEROVIO=1
 python3 -c "import demucs" 2>/dev/null && HAS_DEMUCS=1 || HAS_DEMUCS=0
 python3 -c "import madmom" 2>/dev/null && HAS_MADMOM=1 || HAS_MADMOM=0
 echo "[demo] mujik=$HAS_MUJIK  demucs=$HAS_DEMUCS  madmom=$HAS_MADMOM  verovio=$HAS_VEROVIO"

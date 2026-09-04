@@ -18,6 +18,7 @@ from pathlib import Path
 
 from loguru import logger
 
+from mujik import __version__
 from mujik.config.schema import PipelineConfig
 from mujik.midi.io import write_project_to_midi
 from mujik.midi.model import Project, TempoSegment
@@ -340,7 +341,7 @@ class Pipeline:
             project.tempo_map = [tempo]
             project.chord_track = grooved_chord_track  # v0.4.9
             project.metadata.update({
-                "mujik_version": "0.5.1",
+                "mujik_version": __version__,
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,
@@ -389,7 +390,7 @@ class Pipeline:
             tempo_map=[tempo],
             chord_track=grooved_chord_track,  # v0.4.9
             metadata={
-                "mujik_version": "0.5.1",
+                "mujik_version": __version__,
                 "preset": cfg.preset,
                 "loudnorm_enabled": cfg.loudnorm.enabled,
                 "rhythm_enabled": cfg.rhythm.enabled,

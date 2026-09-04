@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mujik-transcriptor"
-version = "0.1.0"
+version = "0.5.2"
 description = "End-to-end music audio to MIDI + PDF score pipeline"
 readme = "README.md"
 license = { text = "MIT" }
