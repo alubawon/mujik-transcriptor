@@ -49,14 +49,15 @@ class TestRouting:
             transcribe_stem(stem)
             assert mock_bp.called
 
-    def test_drums_to_adtof(self):
+    def test_drums_to_drumscript(self):
+        """v0.5.2: drums 默认路由到 drumscript（替代 adtof）。"""
         stem = _make_stem("drums")
         with patch(
-            "mujik.transcribe.adtof_adapter.transcribe_drums_with_adtof"
-        ) as mock_adtof:
-            mock_adtof.return_value = []
+            "mujik.transcribe.drumscript_adapter.transcribe_drums_with_drumscript"
+        ) as mock_ds:
+            mock_ds.return_value = []
             transcribe_stem(stem)
-            assert mock_adtof.called
+            assert mock_ds.called
 
     def test_piano_dispatches_to_bytedance(self):
         """v0.4.0: piano 路由到 bytedance adapter（没装模块时抛 ByteDancePianoAdapterError）。"""

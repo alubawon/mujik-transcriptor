@@ -11,7 +11,7 @@
 | Stream | 最近版本 | 状态 |
 |---|---|---|
 | 源分离 (Demucs v4 4-stem / 6-stem / Roformer) | v0.4.0 | ✅ |
-| 转录 (basic-pitch / adtof / bytedance-piano / multitrack) | v0.4.2 | ✅ |
+| 转录 (basic-pitch / drumscript / bytedance-piano / multitrack) | v0.5.2 | ✅ |
 | 节拍/下拍 (madmom CRNN) | v0.2.2 | ✅ |
 | 时间签名（启发式 4/4 + change CLI）| v0.2.3 | ✅ |
 | 自动和弦（madmom + BTC-HCQT 延伸）| v0.4.8 | ✅ |
@@ -41,26 +41,47 @@ ls out/
 
 ## 🪄 一键 demo
 
-仓库自带 `buhee/buhee.mp3` 作为 demo 音频；脚本接受路径作入参。
+仓库自带 `demo/` 下三个演示音频（buhee.mp3 / moon.mp3 / dança.mp3）。
+**无参一键跑三组合 showcase** —— 每首曲子用最像它风格的 preset：
+
+| 曲目 | preset |
+|---|---|
+| `demo/buhee.mp3` | jazz |
+| `demo/moon.mp3` | metal |
+| `demo/dança.mp3` | pop |
 
 ```bash
-# 用仓库自带 buhee.mp3 跑三 preset 对比
-./scripts/run_demo.sh buhee/buhee.mp3
+# 一键三组合 showcase（每曲一个 preset，产物在 demo_out/<曲名>/）
+./scripts/run_demo.sh
 
-# 用自己的音频
+# 用自己的音频（默认配置）
 ./scripts/run_demo.sh path/to/your_song.wav
 
+# 显式指定 preset
+./scripts/run_demo.sh demo/buhee.mp3 "" pop
+
 # 只跑前 30 秒（需 ffmpeg）
-./scripts/run_demo.sh buhee/buhee.mp3 30
+./scripts/run_demo.sh demo/buhee.mp3 30
 
-# 替换 demo 音频后再跑
-cp my_favorite.mp3 buhee/buhee.mp3 && ./scripts/run_demo.sh buhee/buhee.mp3
+# 多 preset 对比（opt-in，开发/评测用；需显式传入单个音频）
+MUJIK_DEMO_PRESETS="pop,jazz,metal" ./scripts/run_demo.sh demo/buhee.mp3
 ```
 
-每次跑出 `demo_out/{pop,jazz,metal}/{project.mid, score.pdf, chords.json, ...}` + `demo_out/demo_report.md`。
+产物按**曲名**目录隔离（曲名 = 输入文件名去扩展名），最终产物与中间产物分层：
+
+```
+demo_out/
+├── buhee/   ← demo/buhee.mp3（jazz）
+├── moon/    ← demo/moon.mp3（metal）
+├── dança/   ← demo/dança.mp3（pop）
+│   ├── project.mid       ← 最终 MIDI ⭐
+│   ├── score.musicxml    ← 最终乐谱 ⭐（verovio 可用时另有 score.pdf）
+│   ├── project.json      ← 元数据
+│   └── ws/               ← 中间产物（stems/tracks/beats.json/chords.json ...）
+└── demo_report.md       ← 汇总报告
 ```
 
-输出 `out/pop/`, `out/jazz/`, `out/metal/`，每个含 MIDI + PDF + JSON 报告。
+多 preset 对比时：`demo_out/buhee/{pop,jazz,metal}/`（各含最终产物）+ 共享 `demo_out/buhee/ws/`，另有 `demo_out/demo_report.md` 汇总报告。
 
 ## 📖 调用示例
 
@@ -83,7 +104,7 @@ cp my_favorite.mp3 buhee/buhee.mp3 && ./scripts/run_demo.sh buhee/buhee.mp3
 WAV/FLAC/MP3
   → pyloudnorm (响度归一)
   → Demucs v4 htdemucs_ft (4-stem 源分离)
-  → basic-pitch / adtof / bytedance / multitrack (各轨 MIDI 转录)
+  → basic-pitch / drumscript / bytedance / multitrack (各轨 MIDI 转录)
   → madmom CRNN (节拍/下拍) + 启发式 (时间签名)
   → madmom / BTC-HCQT (和弦识别，opt-in)
   → quantize + chord quantize + chord groove (后处理)
@@ -100,17 +121,17 @@ WAV/FLAC/MP3
 |---|---|---|
 | 源分离 | Demucs v4 htdemucs_ft | ⭐ v0.4.0 6-stem |
 | 旋律/贝斯/other 转录 | basic-pitch | ✅ v0.2.1 |
-| 鼓转录 | adtof | ✅ v0.2.1 |
+| 鼓转录 | DrumScript (Apache-2.0, 规则引擎无权重, metal 专精) | ✅ v0.5.2（替代 adtof：死链 + CC-BY-NC-SA 权重） |
 | 钢琴转录 | bytedance-piano | ✅ v0.4.0 |
 | 节拍/下拍 | madmom CRNN | ✅ v0.2.2 |
 | 时间签名 | 启发式 4/4 | ✅ v0.2.3 |
 | 和弦识别（major/minor）| madmom CRNN | ✅ v0.4.4 |
-| 和弦识别（7th/延伸）| BTC-HCQT (MIT) | ✅ v0.4.8 |
+| 和弦识别（7th/延伸）| BTC-HCQT (MIT, 代码内嵌 vendor + 权重镜像自动下载) | ✅ v0.5.2 |
 | 多乐器一次转 | MuScriptor（CC-BY-NC 隔离）| ✅ v0.4.2 |
 | 渲染主线 | Verovio (BSD) | ✅ v0.2.4 |
 | 渲染精细 | LilyPond (GPL 隔离) | 🧪 v0.3 |
 | 渲染快速 | MuseScore (GPL 隔离) | 🧪 v0.3 |
-| Benchmark 框架 | synthetic 5-genre | ✅ v0.5.0 |
+| Benchmark 框架 | synthetic 5-genre | ✅ v0.5.0（v0.5.2 + 本地真实曲库 manifest + MUSDB18 分离 SDR）|
 
 ## 文档
 
@@ -139,10 +160,11 @@ mujik run --input jazz_take.wav --output out_jazz/ --preset jazz
 # jazz preset 默认开启 chord + chord.quantize，gpt-2.7B chord quality
 ```
 
-### 3. 金属 preset（开 6-stem Demucs + ByteDance piano）
+### 3. 金属 preset（32 分细网格 + 直拍）
 ```bash
 mujik run --input metal_track.wav --output out_metal/ --preset metal
-# metal preset 用 htdemucs_6s，多出 piano/guitar 两轨
+# v0.5.2 修：preset 不再声明未实现的后端。需要 6-stem（piano/guitar 轨）
+# 显式配置：source_separation.variant=htdemucs_6s
 ```
 
 ### 4. 多乐器一次转（MuScriptor，替代 4-stem）
@@ -173,13 +195,33 @@ mujik time-signature change --project-dir out/ --at 1:30.000 \
 ```bash
 mujik render --input score.musicxml --output score.pdf --pdf
 # backend: verovio (默认) / lilypond / musescore
+# v0.5.2：verovio CLI 不可用时自动回退纯 Python 链路
+#   verovio toolkit SVG → cairosvg → pypdf（需系统 libcairo2，ml 镜像已预装）
 ```
 
 ### 9. 5-genre benchmark
 ```bash
 uv pip install 'mujik-transcriptor[benchmark]'
+
+# synthetic baseline（5 genre × 3 file，验证 framework + sanity check）
 python -m mujik.benchmarks.runner --dataset synthetic --output bench.md
-# 输出 bench.md + bench.json（per-genre + overall）
+
+# 真实数据 benchmark（自家曲库，仓库不携带数据）：
+#   1) 建目录 my_bench/，放音频（audio/*.wav）+ manifest.json：
+#      [{"sample_id": "s1", "genre": "jazz", "audio": "audio/s1.wav",
+#        "notes": [[60,0.5,1.2],...], "beats": [...], "chords": [[0,2,"C","maj7"],...]}, ...]
+#   2) 跑（对每样本执行完整管线：demucs + madmom + basic-pitch/drumscript + chord）
+python -m mujik.benchmarks.runner --dataset local --data-dir my_bench/ \
+  --preset pop --output bench.md
+# --limit N 快速试跑；--no-chords 跳过和弦检测；--json bench.json 同时出 JSON
+
+# 输出 bench.md + bench.json（per-genre + overall：
+# note F1 / beat CMLt / chord majmin）
+
+# 分离质量 benchmark（MUSDB18 + museval SDR/SIR/SAR，需自行下载数据）
+uv pip install 'mujik-transcriptor[separation-bench]'
+python -m mujik.benchmarks.separation --musdb-root ~/data/musdb18-hq \
+  --is-wav --variant htdemucs_ft --limit 3 --output sep_bench.md
 ```
 
 ## 许可证
@@ -199,26 +241,28 @@ muscriptor 模型权重为 **CC BY-NC 4.0**（仅限非商用研究），项目�
 - 容器化：Docker + NVIDIA Container Toolkit
 - 预提交：ruff + mypy + 许可证扫描
 
-### 本地开发 setup
+### 本地开发 setup（两层验证流程）
+
+**功能验证先在本地 `.venv` 闭环，容器（Dockerfile.ml）只留给构建 / 发布 / 容器专属 ML 栈。**
+
 ```bash
-# 锁定 Python 版本
-uv python install 3.11
-uv python pin 3.11
+# 一键本地 setup（macOS arm64 已验证）：venv + 依赖 + madmom 兼容补丁 + 硬校验
+./scripts/local_setup.sh
 
-# 创建 venv 并装依赖
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev,benchmark]"
+# 跑测试（全量单测含 PDF e2e，~5s）
+.venv/bin/python -m pytest tests/unit -q
 
-# 跑测试
-pytest tests/ -q
-
-# 跑最小管线（首次会下载模型权重到 ~/.cache/huggingface/）
-mujik run --input song.wav --output out/ --config config/default.yaml
-
-# 跑一键 demo（用仓库自带 buhee.mp3）
-./scripts/run_demo.sh buhee/buhee.mp3
+# 本地可跑的功能：CLI、demucs 分离(CPU/MPS)、madmom 节拍/和弦、
+# BTC 和弦、quantize、MusicXML/PDF 渲染
+.venv/bin/mujik run --input song.wav --output out/ --preset pop
+.venv/bin/mujik chords --input song.wav --output chords.json
 ```
+
+> macOS 注意：cairosvg 需 `brew install cairo`，且 ctypes 搜不到 `/opt/homebrew/lib`，
+> 需 `export DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib`（脚本已处理当前 shell）。
+
+容器专属（本地不覆盖）：bytedance piano(TF git 包) / muscriptor(CC-BY-NC) 的
+真实推理 E2E、镜像构建、发布验证——见 [Dockerfile.ml](Dockerfile.ml)。
 
 ## 仓库结构
 
@@ -261,7 +305,8 @@ mujik-transcriptor/
 
 ## 贡献
 
-WIP。本地 benchmark 是当前最重要的环节：见 [research.md §6](docs/research.md#6-本地-benchmark-清单)。
+WIP。真实数据 benchmark 已可用（`--dataset local`，见调用示例 §9）：在自家曲库上按
+[research.md §6](docs/research.md#6-本地-benchmark-清单) 清单逐项评测。
 
 ## 引用
 
@@ -272,4 +317,4 @@ WIP。本地 benchmark 是当前最重要的环节：见 [research.md §6](docs/
 - BTC-ISMIR19：Park et al., 2019 ([paper](https://program.ismir.net/2019/ISMIR_53.html))
 - MuScriptor：Kyutai + Mirelo, [muscriptor](https://github.com/muscriptor/muscriptor)
 - basic-pitch：[Spotify Research](https://github.com/spotify/basic-pitch)
-- adtof / ADTOF dataset：Zehren et al., 2021, [arXiv:2107.05535](https://arxiv.org/abs/2107.05535)
+- DrumScript：[DrumScript/DrumScript](https://github.com/DrumScript/DrumScript)（Apache-2.0；v0.5.2 起替代 adtof，后者权重 CC-BY-NC-SA + 原仓库死链）

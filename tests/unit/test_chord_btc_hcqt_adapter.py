@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import pytest
+
+import mujik.chord.btc_hcqt_adapter
 
 from mujik.midi.model import ChordEvent
 from mujik.chord.btc_hcqt_adapter import (
@@ -298,6 +301,104 @@ class TestDetectChords:
         # cmd[4] should be model_path, cmd[5] should be voca
         assert captured_cmd[4] == "/models/btc_large.pt"
         assert captured_cmd[5] == "large"
+
+
+class TestVendorDirAndModelPath:
+    """v0.5.2: vendored _btc/ env 注入 + 权重路径解析顺序。"""
+
+    @pytest.fixture(autouse=True)
+    def _clean_env(self):
+        """隔离 MUJIK_BTC_MODEL / BTC_ISMIR19_PATH，避免宿主机环境污染。"""
+        with patch.dict(os.environ):
+            os.environ.pop("MUJIK_BTC_MODEL", None)
+            os.environ.pop("BTC_ISMIR19_PATH", None)
+            yield
+
+    def _make_audio(self, tmp_path: Path) -> Path:
+        audio = tmp_path / "song.wav"
+        audio.write_bytes(b"RIFF" * 100)
+        return audio
+
+    @staticmethod
+    def _fake_run_capture(cmd_log: list, env_log: dict):
+        """fake subprocess.run：记录 cmd/env，并在 json 输出路径写合法结果。"""
+        def fake_run(cmd, **kwargs):
+            cmd_log.extend(cmd)
+            env_log.update(kwargs.get("env") or {})
+            json_path = Path(cmd[3])
+            json_path.parent.mkdir(parents=True, exist_ok=True)
+            _write_fake_btc_json(json_path)
+            return MagicMock(returncode=0, stderr="")
+        return fake_run
+
+    def test_vendor_dir_injected_when_exists(self, tmp_path: Path):
+        """包内 _btc/ 存在时，BTC_ISMIR19_PATH 注入 subprocess env。"""
+        audio = self._make_audio(tmp_path)
+
+        vendor_dir = Path(mujik.chord.btc_hcqt_adapter.__file__).resolve().parent / "_btc"
+
+        captured_cmd, captured_env = [], {}
+        with patch("subprocess.run",
+                   side_effect=self._fake_run_capture(captured_cmd, captured_env)):
+            detect_chords_with_btc(audio)
+
+        if vendor_dir.is_dir():
+            assert captured_env.get("BTC_ISMIR19_PATH") == str(vendor_dir)
+        else:
+            # 未 vendor 时不注入（但也不报错，交给 wrapper exit 4 fail-loud）
+            assert "BTC_ISMIR19_PATH" not in captured_env
+
+    def test_user_env_not_overridden(self, tmp_path: Path):
+        """用户显式设置的 BTC_ISMIR19_PATH 优先，不被 vendor 目录覆盖。"""
+        audio = self._make_audio(tmp_path)
+        os.environ["BTC_ISMIR19_PATH"] = "/custom/btc"
+
+        captured_cmd, captured_env = [], {}
+        with patch("subprocess.run",
+                   side_effect=self._fake_run_capture(captured_cmd, captured_env)):
+            detect_chords_with_btc(audio)
+
+        assert captured_env.get("BTC_ISMIR19_PATH") == "/custom/btc"
+
+    def test_model_path_from_env(self, tmp_path: Path):
+        """config.btc_model_path 缺省时回退 env MUJIK_BTC_MODEL。"""
+        audio = self._make_audio(tmp_path)
+        os.environ["MUJIK_BTC_MODEL"] = "/app/models/btc_model_large_voca.pt"
+
+        captured_cmd, captured_env = [], {}
+        with patch("subprocess.run",
+                   side_effect=self._fake_run_capture(captured_cmd, captured_env)):
+            detect_chords_with_btc(audio)
+
+        assert captured_cmd[4] == "/app/models/btc_model_large_voca.pt"
+
+    def test_config_model_path_wins_over_env(self, tmp_path: Path):
+        """显式 config.btc_model_path 优先于 env MUJIK_BTC_MODEL。"""
+        audio = self._make_audio(tmp_path)
+        os.environ["MUJIK_BTC_MODEL"] = "/app/models/btc_model_large_voca.pt"
+
+        class FakeConfig:
+            btc_model_path = "/explicit/model.pt"
+            btc_voca = "large"
+            btc_timeout_sec = 600
+
+        captured_cmd, captured_env = [], {}
+        with patch("subprocess.run",
+                   side_effect=self._fake_run_capture(captured_cmd, captured_env)):
+            detect_chords_with_btc(audio, config=FakeConfig())
+
+        assert captured_cmd[4] == "/explicit/model.pt"
+
+    def test_no_model_path_no_env_passes_empty(self, tmp_path: Path):
+        """两者都没有 → cmd 传空串（wrapper exit 5 fail-loud）。"""
+        audio = self._make_audio(tmp_path)
+
+        captured_cmd, captured_env = [], {}
+        with patch("subprocess.run",
+                   side_effect=self._fake_run_capture(captured_cmd, captured_env)):
+            detect_chords_with_btc(audio)
+
+        assert captured_cmd[4] == ""
 
 
 class TestQualityMapping:

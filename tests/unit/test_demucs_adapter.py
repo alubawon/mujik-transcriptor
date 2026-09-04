@@ -134,5 +134,6 @@ def test_separate_uses_config(tmp_path: Path):
     assert "cpu" in cmd
     # --out-format mp3
     assert "mp3" in cmd
-    # --segment 10.0
-    assert "10.0" in cmd
+    # --segment 10（demucs CLI 只接受 int；v0.5.1 修：10.0 → 10）
+    seg_idx = cmd.index("--segment")
+    assert cmd[seg_idx + 1] == "10"

@@ -11,6 +11,7 @@ from mujik.transcribe.basic_pitch_adapter import (
     BASIC_PITCH_CLI,
     BasicPitchAdapterError,
     check_basic_pitch_available,
+    resolve_basic_pitch_cli,
     transcribe_with_basic_pitch,
 )
 from mujik.config.schema import BasicPitchConfig
@@ -23,8 +24,9 @@ def _write_bp_csv(
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with open(csv_path, "w", newline="") as f:
         writer = csv.writer(f)
+        # v0.5.1: basic-pitch ≥0.3 列名（velocity；pitch_bend 逐帧续行）
         writer.writerow([
-            "start_time_s", "end_time_s", "pitch_midi", "pitch_velocity"
+            "start_time_s", "end_time_s", "pitch_midi", "velocity", "pitch_bend"
         ])
         for s, e, p, v in rows:
             writer.writerow([s, e, p, v])
@@ -49,13 +51,52 @@ class TestCheckAvailable:
             assert check_basic_pitch_available() is False
 
 
+class TestResolveCli:
+    """v0.5.2：CLI 路径解析——venv 下直接跑 .venv/bin/mujik 时子进程
+    PATH 里未必有 .venv/bin，需优先解析解释器同目录的 console script。"""
+
+    def test_sibling_of_executable_wins(self, tmp_path: Path):
+        fake_py = tmp_path / "python"
+        fake_py.write_text("")  # is_file() 需要真实文件
+        sibling = tmp_path / BASIC_PITCH_CLI
+        sibling.write_text("")
+        with patch("mujik.transcribe.basic_pitch_adapter.sys") as mock_sys:
+            mock_sys.executable = str(fake_py)
+            assert resolve_basic_pitch_cli() == str(sibling)
+
+    def test_fallback_to_path_name(self, tmp_path: Path):
+        fake_py = tmp_path / "python"
+        fake_py.write_text("")
+        with patch("mujik.transcribe.basic_pitch_adapter.sys") as mock_sys:
+            mock_sys.executable = str(fake_py)
+            assert resolve_basic_pitch_cli() == BASIC_PITCH_CLI
+
+    def test_cmd_uses_resolved_cli(self, tmp_path: Path):
+        """transcribe_with_basic_pitch 的 cmd[0] 应为解析结果而非裸名。"""
+        resolved = "/some/venv/bin/basic-pitch"
+        with (
+            patch(
+                "mujik.transcribe.basic_pitch_adapter.resolve_basic_pitch_cli",
+                return_value=resolved,
+            ),
+            patch("subprocess.run") as mock_run,
+        ):
+            mock_run.return_value = MagicMock(returncode=0)
+            (tmp_path / "a.wav").write_bytes(b"RIFF")  # 存在性检查
+            csv_path = tmp_path / "a_basic_pitch.csv"
+            _write_bp_csv(csv_path, [(0.0, 1.0, 60, 100)])
+            transcribe_with_basic_pitch(tmp_path / "a.wav", BasicPitchConfig(),
+                                        out_dir=tmp_path)
+            assert mock_run.call_args[0][0][0] == resolved
+
+
 class TestTranscribe:
     def test_basic(self, tmp_path: Path):
         audio = tmp_path / "song.wav"
         audio.write_bytes(b"RIFF")
 
         def fake_run(cmd, *args, **kwargs):
-            out_dir = Path(cmd[1])
+            out_dir = Path(cmd[2])
             _write_bp_csv(out_dir / f"{audio.stem}_basic_pitch.csv", [
                 (0.0, 1.0, 60, 100),   # C4
                 (1.0, 2.0, 62, 90),    # D4
@@ -79,7 +120,7 @@ class TestTranscribe:
         audio.write_bytes(b"RIFF")
 
         def fake_run(cmd, *args, **kwargs):
-            out_dir = Path(cmd[1])
+            out_dir = Path(cmd[2])
             _write_bp_csv(out_dir / f"{audio.stem}_basic_pitch.csv", [])
             return MagicMock(returncode=0, stderr="", stdout="ok")
 
@@ -90,16 +131,18 @@ class TestTranscribe:
             transcribe_with_basic_pitch(audio, config=cfg, out_dir=tmp_path)
 
         cmd = mock_run.call_args[0][0]
-        # 验证 CLI + 阈值
-        assert cmd[0] == BASIC_PITCH_CLI
-        assert str(tmp_path) in cmd[1]
-        assert str(audio) in cmd[2]
+        # 验证 CLI + 阈值（v0.5.1: cmd[1]=--save-note-events，位置参数后移）
+        # v0.5.2: cmd[0] 是解析后的 CLI（venv 同目录优先），与裸名等价即可
+        assert cmd[0] in (BASIC_PITCH_CLI, str(Path(BASIC_PITCH_CLI).parent / BASIC_PITCH_CLI)) or cmd[0].endswith(BASIC_PITCH_CLI)
+        assert "--save-note-events" in cmd
+        assert str(tmp_path) in cmd[2]
+        assert str(audio) in cmd[3]
         # --onset-threshold 0.7
         idx = cmd.index("--onset-threshold")
         assert cmd[idx + 1] == "0.7"
         idx = cmd.index("--frame-threshold")
         assert cmd[idx + 1] == "0.4"
-        idx = cmd.index("--min-note-length")
+        idx = cmd.index("--minimum-note-length")
         assert cmd[idx + 1] == "80"
 
     def test_uses_input_stem_in_output(self, tmp_path: Path):
@@ -108,7 +151,7 @@ class TestTranscribe:
         out_dir = tmp_path / "out"
 
         def fake_run(cmd, *args, **kwargs):
-            out = Path(cmd[1])
+            out = Path(cmd[2])
             expected = out / "my_song_basic_pitch.csv"
             _write_bp_csv(expected, [(0.0, 0.5, 60, 80)])
             return MagicMock(returncode=0, stderr="", stdout="ok")
@@ -122,7 +165,7 @@ class TestTranscribe:
         audio.write_bytes(b"RIFF")
 
         def fake_run(cmd, *args, **kwargs):
-            out_dir = Path(cmd[1])
+            out_dir = Path(cmd[2])
             _write_bp_csv(out_dir / f"{audio.stem}_basic_pitch.csv", [
                 (0.0, 0.5, 60, 200),  # 超出 127
                 (0.5, 1.0, 60, -10),  # 负数
@@ -140,7 +183,7 @@ class TestTranscribe:
         audio.write_bytes(b"RIFF")
 
         def fake_run(cmd, *args, **kwargs):
-            out_dir = Path(cmd[1])
+            out_dir = Path(cmd[2])
             _write_bp_csv(out_dir / f"{audio.stem}_basic_pitch.csv", [
                 (0.0, 0.5, 60, 80),
                 (0.5, 1.0, 200, 80),  # 超 MIDI 范围
@@ -159,7 +202,7 @@ class TestTranscribe:
         audio.write_bytes(b"RIFF")
 
         def fake_run(cmd, *args, **kwargs):
-            out_dir = Path(cmd[1])
+            out_dir = Path(cmd[2])
             # 故意乱序写入
             _write_bp_csv(out_dir / f"{audio.stem}_basic_pitch.csv", [
                 (2.0, 3.0, 64, 80),
@@ -178,11 +221,11 @@ class TestTranscribe:
         audio.write_bytes(b"RIFF")
 
         def fake_run(cmd, *args, **kwargs):
-            out_dir = Path(cmd[1])
+            out_dir = Path(cmd[2])
             csv_path = out_dir / f"{audio.stem}_basic_pitch.csv"
             csv_path.parent.mkdir(parents=True, exist_ok=True)
             with open(csv_path, "w") as f:
-                f.write("start_time_s,end_time_s,pitch_midi,pitch_velocity\n")
+                f.write("start_time_s,end_time_s,pitch_midi,velocity,pitch_bend\n")
                 f.write("0.0,1.0,60,100\n")
                 f.write("not_a_number,1.0,62,90\n")  # 坏行
                 f.write("2.0,3.0,64,80\n")
@@ -194,6 +237,26 @@ class TestTranscribe:
         assert len(notes) == 2
         assert notes[0].pitch == 60
         assert notes[1].pitch == 64
+
+    def test_pitch_bend_semitones_normalized(self, tmp_path: Path):
+        """v0.5.1: basic-pitch ≥0.3 逐帧 semitone bend → mujik [-1,+1]（÷2）。"""
+        audio = tmp_path / "song.wav"
+        audio.write_bytes(b"RIFF")
+
+        def fake_run(cmd, *args, **kwargs):
+            out_dir = Path(cmd[2])
+            csv_path = out_dir / f"{audio.stem}_basic_pitch.csv"
+            csv_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(csv_path, "w") as f:
+                f.write("start_time_s,end_time_s,pitch_midi,velocity,pitch_bend\n")
+                f.write("0.0,1.0,60,100,1,2,0\n")
+            return MagicMock(returncode=0, stderr="", stdout="ok")
+
+        with patch("subprocess.run", side_effect=fake_run):
+            notes = transcribe_with_basic_pitch(audio, out_dir=tmp_path)
+
+        assert len(notes) == 1
+        assert notes[0].pitch_bend == (0.5, 1.0, 0.0)
 
 
 class TestErrorPaths:

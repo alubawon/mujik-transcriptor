@@ -59,7 +59,7 @@ class TestPipelineWiring:
             loudnorm=LoudnormConfig(enabled=False),
         )
 
-        with patch("mujik.pipeline.separate_with_demucs",
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs",
                    side_effect=_mock_separate_with_demucs), \
              patch("mujik.pipeline.transcribe_stem", return_value=[]), \
              patch("soundfile.info") as mock_info:
@@ -80,7 +80,7 @@ class TestPipelineWiring:
         )
 
         with patch("mujik.pipeline.normalize_loudness") as mock_ln, \
-             patch("mujik.pipeline.separate_with_demucs",
+             patch("mujik.separate.demucs_adapter.separate_with_demucs",
                    side_effect=_mock_separate_with_demucs), \
              patch("mujik.pipeline.transcribe_stem", return_value=[]), \
              patch("soundfile.info") as mock_info:
@@ -100,7 +100,7 @@ class TestPipelineWiring:
         )
 
         with patch("mujik.pipeline.normalize_loudness") as mock_ln, \
-             patch("mujik.pipeline.separate_with_demucs",
+             patch("mujik.separate.demucs_adapter.separate_with_demucs",
                    side_effect=_mock_separate_with_demucs), \
              patch("mujik.pipeline.transcribe_stem", return_value=[]), \
              patch("soundfile.info") as mock_info:
@@ -128,7 +128,7 @@ class TestPipelineTranscribe:
                 return [Note(0.0, 0.1, 36, 100)]
             return []
 
-        with patch("mujik.pipeline.separate_with_demucs",
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs",
                    side_effect=_mock_separate_with_demucs), \
              patch("mujik.pipeline.transcribe_stem",
                    side_effect=fake_transcribe_stem), \
@@ -157,7 +157,7 @@ class TestPipelineTranscribe:
                 return [Note(0.0, 0.1, 36, 100)]
             return []
 
-        with patch("mujik.pipeline.separate_with_demucs",
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs",
                    side_effect=_mock_separate_with_demucs), \
              patch("mujik.pipeline.transcribe_stem",
                    side_effect=fake_transcribe), \
@@ -185,7 +185,7 @@ class TestProjectMetadata:
             preset="pop",
         )
 
-        with patch("mujik.pipeline.separate_with_demucs",
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs",
                    side_effect=_mock_separate_with_demucs), \
              patch("mujik.pipeline.transcribe_stem", return_value=[]), \
              patch("soundfile.info") as mock_info:
@@ -194,6 +194,6 @@ class TestProjectMetadata:
 
         import json
         meta = json.loads((tmp_path / "out" / "project.json").read_text())
-        assert meta["mujik_version"] in ("0.2.1", "0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0", "0.5.1")
+        assert meta["mujik_version"] in ("0.2.1", "0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0", "0.5.1", "0.5.2")
         assert meta["preset"] == "pop"
         assert "demucs" in meta["separator"]

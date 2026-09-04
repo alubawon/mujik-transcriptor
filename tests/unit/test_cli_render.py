@@ -97,19 +97,22 @@ class TestRenderCLI:
         assert pdf_path.exists()
         assert pdf_path.read_bytes().startswith(b"%PDF-")
 
-    def test_pdf_cli_not_available_errors(self, tmp_path: Path):
+    def test_pdf_cli_not_available_falls_back_to_svg_pdf(self, tmp_path: Path):
+        """v0.5.2: CLI 不可用不再报错，回退 verovio toolkit SVG→cairosvg→pypdf。"""
         in_path = _setup_musicxml(tmp_path)
-        out_path = tmp_path / "out"
+        out_path = tmp_path / "out.pdf"
 
         with patch("mujik.render.verovio_cli.VerovioCliBackend.is_available",
-                   return_value=False):
-            with pytest.raises(Exception, match="not found"):
-                main([
-                    "render",
-                    "--input", str(in_path),
-                    "--output", str(out_path),
-                    "--pdf",
-                ])
+                   return_value=False), \
+             patch("mujik.render.verovio_svg_pdf.render_musicxml_to_pdf_via_svg",
+                   return_value=out_path) as mock_fallback:
+            main([
+                "render",
+                "--input", str(in_path),
+                "--output", str(out_path),
+                "--pdf",
+            ])
+        mock_fallback.assert_called_once()
 
     def test_lilypond_backend_dispatches(self, tmp_path: Path):
         """--backend lilypond 应走 LilyPondClient（mock）。"""

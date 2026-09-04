@@ -30,6 +30,7 @@ Label 字符串格式：
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -229,7 +230,8 @@ def detect_chords_with_madmom(
         out_dir.mkdir(parents=True, exist_ok=True)
 
     json_path = out_dir / f"chords_{audio_path.stem}.json"
-    wrapper_path = out_dir / "_madmom_chord_wrapper.py"
+    # v0.5.1 修 5：wrapper 脚本写系统临时目录，不再泄漏进产物目录
+    wrapper_path = Path(tempfile.gettempdir()) / f"mujik_madmom_chord_wrapper_{os.getpid()}.py"
     wrapper_path.write_text(_MADMOM_CHORD_WRAPPER, encoding="utf-8")
 
     logger.info(

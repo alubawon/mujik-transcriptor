@@ -1,11 +1,14 @@
-# jazz preset — 5-stem (含 piano) + swing16 + 和弦识别
+# jazz preset — 4-stem demucs + swing16 groove + 和弦识别
+# v0.5.2 修：原 model=mdx23c / stem_count=5 从未生效（Roformer 后端未实现，
+# 被 demucs 路由静默忽略）。jazz 的真实差异化在 chord + swing16；
+# 5-stem (piano) 待 Roformer/htdemucs_6s 集成后再切。
 extends: "../default.yaml"
 
 preset: "jazz"
 
 source_separation:
-  stem_count: 5
-  model: "mdx23c"
+  stem_count: 4
+  model: "demucs"
 
 chord:
   enabled: true

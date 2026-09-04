@@ -56,7 +56,8 @@ class TranscribeConfig(BaseModel):
 
     vocals: str = "basic-pitch"
     bass: str = "basic-pitch"
-    drums: str = "adtof"
+    # v0.5.2: drums 默认 adtof → drumscript（adtof 原仓库死链 + CC-BY-NC-SA 权重）
+    drums: str = "drumscript"
     piano: str = "bytedance-piano"
     guitar: str = "apollo"
     other: str = "basic-pitch"
@@ -79,13 +80,14 @@ class BasicPitchConfig(BaseModel):
     timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
 
-class AdtofConfig(BaseModel):
-    """adtof 配置（subprocess 调用）。"""
+class DrumScriptConfig(BaseModel):
+    """DrumScript 鼓转录配置（subprocess 调用，v0.5.2 替代 adtof）。"""
 
-    model: Literal["adtof-5class", "adtof-9class"] = "adtof-5class"
-    onset_threshold: float = Field(default=0.5, ge=0.0, le=1.0)
+    # DrumScript 不输出逐击力度（其 MIDI 导出固定 velocity=100），统一用它
+    default_velocity: int = Field(default=100, ge=1, le=127)
     min_note_length_ms: float = Field(default=50.0, ge=10.0, le=1000.0)
-    device: Literal["cpu", "cuda"] = "cpu"
+    # 同一 instrument 相邻 onset 小于此间隔视为同一击打的重复检测，去重
+    min_onset_interval_ms: float = Field(default=40.0, ge=0.0, le=500.0)
     timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
 
@@ -114,6 +116,8 @@ class ChordConfig(BaseModel):
     chord_timeout_sec: int = Field(default=1800, ge=60, le=7200)
 
     # v0.4.8: BTC-HCQT 专属配置
+    # btc_model_path: None 时按 env MUJIK_BTC_MODEL 回退（ml 镜像默认
+    #   /app/models/btc_model_large_voca.pt），再没有则 fail-loud（wrapper exit 5）
     btc_model_path: str | None = None  # 用户提供 .pt 文件路径
     btc_voca: Literal["large", "simple"] = "large"  # 170 类 vs 25 类
     btc_timeout_sec: int = Field(default=1800, ge=60, le=7200)
@@ -180,6 +184,10 @@ class PipelineConfig(BaseModel):
 
     input_path: str
     output_dir: str
+    # v0.5.1 修 5：中间产物（stems/tracks/beats.json 等）落盘目录；
+    # None 时默认 {output_dir}/ws。最终产物（project.mid/score.musicxml/
+    # project.json）始终在 output_dir，与中间产物分层
+    workspace_dir: str | None = None
     preset: Literal["pop", "jazz", "metal", "custom"] = "custom"
 
     source_separation: SourceSeparationConfig = Field(default_factory=SourceSeparationConfig)
@@ -228,8 +236,12 @@ class PipelineConfig(BaseModel):
             cfg.source_separation.model = "demucs"
             cfg.quantize.groove_template = "straight"
         elif preset == "jazz":
-            cfg.source_separation.stem_count = 5
-            cfg.source_separation.model = "mdx23c"
+            # v0.5.2 修：原来写 model=mdx23c + stem_count=5，但 Roformer 后端
+            # 未实现、被 demucs 路由静默忽略（配置说谎）。jazz 的真实差异化
+            # 在 chord + swing16 groove，分离走主线 4-stem demucs；
+            # 5-stem(piano) 待 Roformer/6-stem 集成后再切。
+            cfg.source_separation.stem_count = 4
+            cfg.source_separation.model = "demucs"
             cfg.quantize.groove_template = "swing16"
             cfg.chord.enabled = True
         elif preset == "metal":
@@ -245,7 +257,7 @@ __all__ = [
     "LoudnormConfig",
     "TranscribeConfig",
     "BasicPitchConfig",
-    "AdtofConfig",
+    "DrumScriptConfig",
     "RhythmConfig",
     "ChordConfig",
     "QuantizeConfig",

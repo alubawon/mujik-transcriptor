@@ -16,8 +16,10 @@ subprocess 模式与 adtof 一致：写临时 wrapper 脚本 → 调 madmom → 
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 from loguru import logger
@@ -44,12 +46,74 @@ def main():
 
     try:
         import numpy as np
+        # madmom 0.16 的 Cython 扩展（ml/hmm.pyx 编译产物 .so）运行时引用
+        # np.int / np.float，numpy 1.24+ 已移除；.so 无法像 .py 一样 sed 补丁，
+        # 这里 monkey-patch 回内建类型（等价替换，官方推荐做法）
+        for _name, _builtin in (
+            ("int", int), ("float", float), ("complex", complex),
+            ("object", object), ("bool", bool),
+        ):
+            if not hasattr(np, _name):
+                setattr(np, _name, _builtin)
         from madmom.io.audio import load_audio_file
-        from madmom.features.beats import RNNDownBeatProcessor, DownBeatTrackingProcessor
+        # madmom 0.16: RNNDownBeatProcessor / DBNDownBeatTrackingProcessor 在
+        # madmom.features.downbeats（v0.5.1 修：原 import 自 features.beats 会
+        # ImportError 且被 except ImportError 误报为 "not installed"）
+        from madmom.features.downbeats import (
+            RNNDownBeatProcessor,
+            DBNDownBeatTrackingProcessor,
+        )
         from madmom.features.tempo import TempoEstimationProcessor
-    except ImportError:
+    except ImportError as e:
+        print(f"madmom import failed: {e}", file=sys.stderr)
         print("madmom not installed; install via `uv pip install madmom`", file=sys.stderr)
         sys.exit(3)
+
+    # madmom 0.16 + numpy>=1.24 兼容补丁：DBNDownBeatTrackingProcessor.process
+    # 里 `np.argmax(np.asarray(results)[:, 1])` 对 ragged (path, log_prob) 列表
+    # 会 ValueError（numpy 1.24 起禁止隐式 object array）。
+    # 复制原方法并只替换 best 选择一行（其余逐行同 madmom 0.16 源码）。
+    def _patched_dbn_process(self, activations, **kwargs):
+        import itertools as it
+        from madmom.features.downbeats import _process_dbn
+        first = 0
+        if self.threshold:
+            idx = np.nonzero(activations >= self.threshold)[0]
+            if idx.any():
+                first = max(first, np.min(idx))
+                last = min(len(activations), np.max(idx) + 1)
+            else:
+                last = first
+            activations = activations[first:last]
+        if not activations.any():
+            return np.empty((0, 2))
+        results = list(self.map(_process_dbn, zip(self.hmms,
+                                                  it.repeat(activations))))
+        # v0.5.1 修：按 log probability 选最佳 HMM（原 np.asarray ragged 崩溃点）
+        best = max(range(len(results)), key=lambda i: results[i][1])
+        path, _ = results[best]
+        st = self.hmms[best].transition_model.state_space
+        om = self.hmms[best].observation_model
+        positions = st.state_positions[path]
+        beat_numbers = positions.astype(int) + 1
+        if self.correct:
+            beats = np.empty(0, dtype=int)
+            beat_range = om.pointers[path] >= 1
+            idx = np.nonzero(np.diff(beat_range.astype(int)))[0] + 1
+            if beat_range[0]:
+                idx = np.r_[0, idx]
+            if beat_range[-1]:
+                idx = np.r_[idx, beat_range.size]
+            if idx.any():
+                for left, right in idx.reshape((-1, 2)):
+                    peak = np.argmax(activations[left:right]) // 2 + left
+                    beats = np.hstack((beats, peak))
+        else:
+            beats = np.nonzero(np.diff(beat_numbers))[0] + 1
+        return np.vstack(((beats + first) / float(self.fps),
+                          beat_numbers[beats])).T
+
+    DBNDownBeatTrackingProcessor.process = _patched_dbn_process
 
     # 加载音频（madmom 自己读文件）
     try:
@@ -62,22 +126,26 @@ def main():
     rnn = RNNDownBeatProcessor()
     probs = rnn(sig)
 
-    # 下打跟踪
-    db_proc = DownBeatTrackingProcessor(beats_per_bar=[3, 4, 5, 6, 7])
-    db_result = db_proc(probs)  # [(time, label), ...]  label 1=beat, 0=downbeat
+    # 下打跟踪：DBN 模型支持 3/4 与 4/4（madmom 0.16 API）
+    # fps 必须显式传（RNNDownBeatProcessor 输出帧率 100fps），否则 __init__ 内
+    # 60.*fps/max_bpm 会 TypeError
+    db_proc = DBNDownBeatTrackingProcessor(beats_per_bar=[3, 4], fps=100)
+    db_result = db_proc(probs)  # [(time, label), ...]  label 1=downbeat, 2..4=beat
 
-    downbeats = [float(t) for t, lab in db_result if lab == 0]
+    downbeats = [float(t) for t, lab in db_result if lab == 1]
     beats = [float(t) for t, _ in db_result]
 
-    # 估计全局 BPM
+    # 估计全局 BPM（RNNDownBeatProcessor 输出 2 列 (beat, downbeat)，
+    # TempoEstimationProcessor 取 beat activation 列）
     tempo_proc = TempoEstimationProcessor(fps=100)
-    tempi = tempo_proc(probs)
-    # tempi 是 list of (bpm, strength)，取 strength 最高
-    if tempi:
-        bpm, strength = max(tempi, key=lambda x: x[1])
-        bpm = float(bpm)
+    tempi = np.asarray(tempo_proc(probs[:, 0]))
+    # tempi 是 (bpm, strength) 的二维数组，取 strength 最高
+    if len(tempi):
+        best = tempi[np.argmax(tempi[:, 1])]
+        bpm = float(best[0])
+        strength = float(best[1])
         # 强度 ∈ [0, 1]，作为置信度
-        tempo_confidence = min(1.0, float(strength) / 100.0)
+        tempo_confidence = min(1.0, strength / 100.0)
     else:
         bpm, tempo_confidence = 120.0, 0.0
 
@@ -124,7 +192,8 @@ def track_beats_with_madmom(
         out_dir.mkdir(parents=True, exist_ok=True)
 
     json_path = out_dir / f"madmom_{audio_path.stem}.json"
-    wrapper_path = out_dir / "_madmom_wrapper.py"
+    # v0.5.1 修 5：wrapper 脚本写系统临时目录，不再泄漏进产物目录
+    wrapper_path = Path(tempfile.gettempdir()) / f"mujik_madmom_wrapper_{os.getpid()}.py"
     wrapper_path.write_text(_MADMON_WRAPPER)
 
     logger.info(
@@ -143,8 +212,9 @@ def track_beats_with_madmom(
         ) from e
 
     if result.returncode != 0:
+        # 尾部截取：traceback 的真实异常在最后几行
         raise MadmomAdapterError(
-            f"madmom failed (exit={result.returncode}): {result.stderr[:500]}"
+            f"madmom failed (exit={result.returncode}): {result.stderr[-2000:]}"
         )
 
     if not json_path.exists():

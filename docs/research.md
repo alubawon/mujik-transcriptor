@@ -119,15 +119,20 @@
 
 ### 2.3 鼓转录
 
+> **2026-09 复查更正**：本表当年标的 adtof "MIT" 有误——原仓库 MZehren/ADTOF 实为
+> CC-BY-NC-SA 4.0（非商用），且 `Music-and-Culture-Technology-Lab/Adtof` URL 已 404，
+> PyTorch 移植 xavriley/ADTOF-pytorch 无 LICENSE。v0.5.2 起主线改用 DrumScript（下表）。
+
 | 工具 | 输出类别 | 许可证 | 训练集 | 推荐 |
 |---|---|---|---|---|
-| **adtof** | 5 类 | MIT | ADTOF (RockBand 谱面) | ⭐ 首选 / 🧪 待验证 |
+| **DrumScript** | kick/snare/hh open+closed/3 tom/crash/ride | Apache-2.0 | 无（规则引擎，素材以技术死亡金属为主） | ⭐ v0.5.2 主线 |
+| ~~adtof~~ | 5 类 | CC-BY-NC-SA（原表误标 MIT） | ADTOF (RockBand 谱面) | ❌ 弃用：死链 + NC + 移植版无 LICENSE |
 | **Omnizart (drum module)** | 多类 | MIT | A2MD | 🧪 备选 |
-| **DrumTransformer** | onset + class | MIT | 多集合并 | 🧪 备选（较新） |
+| YODO (YOLOv4) | 11 类 | MIT | E-GMD | 🧪 备选（单人项目停更风险） |
 
 **已知风险**：
 - ADTOF 训练集来自 RockBand 谱面，对真实金属失真、双底鼓 blast beat、ghost note 鲁棒性未交叉验证
-- 本次研究候选主张中 ADTOF 全部被驳回，是高风险节点
+- DrumScript 为 alpha 规则引擎：速度优先于准确率，jazz/funk 鼓（ghost note 密集场景）官方自述准确率一般；kick 偏少 / hi-hat 偏多（buhee 实测 67 kick vs 1043 closed-hh）
 
 ### 2.4 节拍/下拍跟踪
 
@@ -159,6 +164,14 @@
 | **Chord-CNN-LSTM** | root + triad/7/9/11/13 + bass | MIT | ⭐ 备选（最细粒度） |
 | Chordino (aubio) | root | GPL-3.0 ⚠️ | 避开（GPL 传染） |
 | madmom (ChordRecognitionProcessor) | root + bass + 7ths | BSD-3 | 备选（停滞） |
+
+**v0.5.2 落地方式（BTC-HCQT vendoring）**：BTC-ISMIR19（Park et al., ISMIR 2019，
+MIT，[jayg996/BTC-ISMIR19](https://github.com/jayg996/BTC-ISMIR19)）的推理代码
+vendor 进 `src/mujik/chord/_btc/`（btc_model + utils 三件套 + LICENSE；
+170 类词表代码内生成无数据文件；本地补丁：np.float→float，numpy 1.24+）。
+large_voca 权重（12MB，随上游仓库分发）在 ml 镜像构建时下载到
+`/app/models/`，运行时按 `config.btc_model_path` → env `MUJIK_BTC_MODEL` 解析。
+buhee×jazz 实测：234 chords，maj7/m7/7 延伸和弦占 171/234（madmom 时代仅 major/minor）。
 
 **已知风险**：
 - 领域 plateau 在 77-82% root accuracy
@@ -272,8 +285,11 @@ guitar 轨：Apollo
 落地前在自家曲库上跑一遍（每项 5-10 首代表曲）：
 
 1. **Demucs 4-stem 评估**：museval 在 5 类（流行/摇滚/爵士/金属/电子）各 2 首上算 SDR/SIR/SAR
+   —— ✅ v0.5.2 工具就绪：`python -m mujik.benchmarks.separation --musdb-root ... --is-wav`（MUSDB18 自行下载）
 2. **多音转录对比**：basic-pitch vs ByteDance piano vs Apollo 在爵士钢琴/失真吉他片段的 onset+offset+velocity F1
+   —— 工具就绪（v0.5.2）：`python -m mujik.benchmarks.runner --dataset local --data-dir <标注曲库>`
 3. **鼓转录对比**：adtof vs Omnizart vs DrumTransformer 在金属 blast beat + 爵士 ghost note 片段的 F1
+   —— v0.5.2 起 adtof 已弃用（死链+CC-BY-NC-SA），现为 DrumScript；候选对比 Omnizart
 4. **时间签名边界测试**：11/8、13/8、变拍子片段的 ResNet18 输出 + downbeat 距离推断对比
 5. **和弦扩展性测试**：爵士 maj9/m11/13/alt 和弦片段的 BTC-HCQT vs Chord-CNN-LSTM root/quality 准确率
 6. **演奏细节保留**：原始音频 f0 vs 转录 MIDI note + 注入 pitch bend 的频谱差异

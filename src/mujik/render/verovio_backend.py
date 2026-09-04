@@ -106,6 +106,36 @@ class VerovioBackend:
         elif page_size == "Letter":
             self._tk.setOptions({"pageHeight": 2794, "pageWidth": 2159})
 
+    def render_pages(
+        self,
+        musicxml_str: str,
+        page_size: Literal["A4", "Letter"] = "A4",
+        staff_count: int = 2,
+    ) -> list[str]:
+        """渲染全部页面，返回每页 SVG（v0.5.2：供 SVG→PDF 路径使用）。"""
+        self._set_page_size(page_size)
+
+        if not musicxml_str or not musicxml_str.strip():
+            raise VerovioBackendError("empty MusicXML input")
+
+        if not self._tk.loadData(musicxml_str):
+            raise VerovioBackendError("Verovio failed to parse MusicXML")
+
+        try:
+            page_count = int(self._tk.getPageCount())
+            svgs = [self._tk.renderToSVG(page_no) for page_no in range(1, page_count + 1)]
+        except Exception as e:
+            raise VerovioBackendError(f"Verovio page render failed: {e}") from e
+
+        if not svgs or any(not s for s in svgs):
+            raise VerovioBackendError("Verovio returned empty SVG page")
+
+        logger.info(
+            "Verovio rendered SVG: {n} pages, staff_count={k}",
+            n=len(svgs), k=staff_count,
+        )
+        return svgs
+
 
 def render_musicxml_to_svg(
     musicxml_str: str,

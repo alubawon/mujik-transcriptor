@@ -44,6 +44,10 @@ weights/
 *.wav
 !tests/fixtures/*.wav
 *.mp3
+# 三个演示音频随仓库分发（一键 demo showcase 用）
+!demo/buhee.mp3
+!demo/moon.mp3
+!demo/dança.mp3
 *.flac
 *.pdf
 !docs/*.pdf
@@ -67,3 +71,6 @@ config/*.local.yaml
 
 # Docker
 docker-compose.override.yml
+
+# Demo 运行产物（demo/*.mp3 三个演示音频本身是仓库内容，不忽略）
+demo_out/

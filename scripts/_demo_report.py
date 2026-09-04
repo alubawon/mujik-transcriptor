@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""scripts/_demo_report.py — 汇总三 preset 输出的报告生成器。
+"""scripts/_demo_report.py — demo 产物汇总报告生成器。
 
-读取 demo_out/{pop,jazz,metal}/ 下的 project.json + beats.json + chords.json，
-输出一个可读的 markdown 报告到 stdout。
+v0.5.1 修 5：产物按曲名目录化（demo_out/<曲名>/，多 preset 对比时
+demo_out/<曲名>/<preset>/），本脚本递归发现所有 project.json，
+以相对路径为行标签输出 markdown 报告。
 """
 from __future__ import annotations
 
@@ -20,14 +21,21 @@ def _load_json(p: Path) -> dict | None:
         return None
 
 
-def _summarize_preset(preset_dir: Path) -> dict:
-    meta = _load_json(preset_dir / "project.json") or {}
-    beats = _load_json(preset_dir / "beats.json") or {}
-    chords = _load_json(preset_dir / "chords.json")
-    ts = _load_json(preset_dir / "time_signatures.json") or []
+def _summarize_run(run_dir: Path, out_root: Path) -> dict:
+    meta = _load_json(run_dir / "project.json") or {}
+    # beats/chords 等中间产物在 ws/（多 preset 共享时可能不在本目录下）
+    ws = run_dir / "ws"
+    if not ws.is_dir():
+        candidate = run_dir.parent / "ws"
+        ws = candidate if candidate.is_dir() else ws
+    beats = _load_json(ws / "beats.json") or {}
+    chords = _load_json(ws / "chords.json")
+    ts = _load_json(ws / "time_signatures.json") or []
+    label = str(run_dir.relative_to(out_root))
     return {
-        "preset": preset_dir.name,
+        "run": label,
         "version": meta.get("mujik_version", "?"),
+        "preset": meta.get("preset", "?"),
         "separator": meta.get("separator", "?"),
         "transcribe_mode": meta.get("transcribe_mode", "?"),
         "rhythm_enabled": meta.get("rhythm_enabled", False),
@@ -35,15 +43,26 @@ def _summarize_preset(preset_dir: Path) -> dict:
         "chord_backend": meta.get("chord_backend", "?"),
         "chord_quantize_enabled": meta.get("chord_quantize_enabled", False),
         "score_features": meta.get("score_features", []),
-        "bpm": beats.get("bpm"),
+        "bpm": round(beats["bpm"], 1) if isinstance(beats.get("bpm"), (int, float)) else beats.get("bpm"),
         "n_beats": len(beats.get("beats", [])),
         "n_downbeats": len(beats.get("downbeats", [])),
         "n_chords": len(chords) if chords else 0,
         "n_time_sigs": len(ts),
-        "has_mid": (preset_dir / "project.mid").exists(),
-        "has_musicxml": (preset_dir / "score.musicxml").exists(),
-        "has_pdf": (preset_dir / "score.pdf").exists(),
+        "has_mid": (run_dir / "project.mid").exists(),
+        "has_musicxml": (run_dir / "score.musicxml").exists(),
+        "has_pdf": (run_dir / "score.pdf").exists(),
     }
+
+
+def _find_run_dirs(out_root: Path) -> list[Path]:
+    """递归发现含 project.json 的目录（ws/ 自动排除）。"""
+    runs = []
+    for meta in sorted(out_root.rglob("project.json")):
+        d = meta.parent
+        if d.name == "ws":
+            continue
+        runs.append(d)
+    return runs
 
 
 def render_markdown(out_root: Path) -> str:
@@ -52,24 +71,20 @@ def render_markdown(out_root: Path) -> str:
     lines.append(f"Output root: `{out_root}`\n")
     lines.append("")
 
-    presets = ["pop", "jazz", "metal"]
-    summaries = []
-    for p in presets:
-        d = out_root / p
-        if d.exists():
-            summaries.append(_summarize_preset(d))
+    runs = _find_run_dirs(out_root)
+    summaries = [_summarize_run(d, out_root) for d in runs]
 
     if not summaries:
-        lines.append("_No preset outputs found._\n")
+        lines.append("_No outputs found (expected: demo_out/<song>/project.json)._\n")
         return "\n".join(lines)
 
     # 概览表
     lines.append("## Summary\n")
-    lines.append("| Preset | Version | Separator | Transcribe | BPM | Beats | Chords | Time-sigs |")
-    lines.append("|---|---|---|---|---|---|---|---|")
+    lines.append("| Run | Preset | Version | Separator | Transcribe | BPM | Beats | Chords | Time-sigs |")
+    lines.append("|---|---|---|---|---|---|---|---|---|")
     for s in summaries:
         lines.append(
-            f"| **{s['preset']}** | {s['version']} | `{s['separator']}` "
+            f"| **{s['run']}** | {s['preset']} | {s['version']} | `{s['separator']}` "
             f"| {s['transcribe_mode']} | {s['bpm']} | {s['n_beats']} "
             f"| {s['n_chords']} | {s['n_time_sigs']} |"
         )
@@ -77,11 +92,11 @@ def render_markdown(out_root: Path) -> str:
 
     # Feature flags
     lines.append("## Feature flags\n")
-    lines.append("| Preset | Rhythm | Chord | Chord backend | Quantize | Score features |")
+    lines.append("| Run | Rhythm | Chord | Chord backend | Quantize | Score features |")
     lines.append("|---|---|---|---|---|---|")
     for s in summaries:
         lines.append(
-            f"| **{s['preset']}** | {'✅' if s['rhythm_enabled'] else '—'} "
+            f"| **{s['run']}** | {'✅' if s['rhythm_enabled'] else '—'} "
             f"| {'✅' if s['chord_enabled'] else '—'} | `{s['chord_backend']}` "
             f"| {'✅' if s['chord_quantize_enabled'] else '—'} "
             f"| {', '.join(s['score_features']) or '—'} |"
@@ -90,21 +105,21 @@ def render_markdown(out_root: Path) -> str:
 
     # Artifacts
     lines.append("## Artifacts\n")
-    lines.append("| Preset | MIDI | MusicXML | PDF |")
+    lines.append("| Run | MIDI | MusicXML | PDF |")
     lines.append("|---|---|---|---|")
     for s in summaries:
         lines.append(
-            f"| **{s['preset']}** "
+            f"| **{s['run']}** "
             f"| {'✅' if s['has_mid'] else '❌'} "
             f"| {'✅' if s['has_musicxml'] else '❌'} "
             f"| {'✅' if s['has_pdf'] else '❌'} |"
         )
     lines.append("")
 
-    # Per-preset detail
-    lines.append("## Per-preset detail\n")
+    # Per-run detail
+    lines.append("## Per-run detail\n")
     for s in summaries:
-        lines.append(f"### {s['preset']}\n")
+        lines.append(f"### {s['run']}\n")
         lines.append("```json")
         lines.append(json.dumps(
             {k: v for k, v in s.items() if not k.startswith("has_")},

@@ -12,6 +12,8 @@ from pathlib import Path
 
 from loguru import logger
 
+from mujik import __version__
+
 
 def cmd_run(args: argparse.Namespace) -> int:
     """运行管线。"""
@@ -32,10 +34,23 @@ def cmd_run(args: argparse.Namespace) -> int:
     # 覆盖 input/output（CLI 优先）
     cfg.input_path = args.input
     cfg.output_dir = args.output
+    if args.workspace:
+        cfg.workspace_dir = args.workspace
 
     # 跑管线
     pipeline = Pipeline(cfg)
     project = pipeline.run()
+
+    # v0.5.1: 输出 score.musicxml（乐谱产物；`mujik render` 可将其转 PDF/SVG）。
+    # MIDI 是核心产物，MusicXML 导出失败只降级不中断（fail-soft，日志明示）
+    try:
+        from mujik.score.builder import build_musicxml
+        score_xml = build_musicxml(project)
+        score_path = Path(args.output) / "score.musicxml"
+        score_path.write_text(score_xml, encoding="utf-8")
+        logger.info("wrote MusicXML → {}", score_path)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("MusicXML export failed: {}", e)
 
     logger.info(
         "Pipeline done: {n} tracks, {m} notes total",
@@ -73,9 +88,9 @@ def cmd_render(args: argparse.Namespace) -> int:
 
 def cmd_separate(args: argparse.Namespace) -> int:
     """仅跑源分离（调试用）。"""
-    from mujik.separate.demucs_adapter import separate_with_demucs
+    from mujik.separate.router import separate_audio
 
-    stems = separate_with_demucs(args.input, args.output)
+    stems = separate_audio(args.input, args.output)
     for name, stem in stems.stems.items():
         logger.info("  - {}: {}", name, stem.audio_path)
     return 0
@@ -130,8 +145,14 @@ def cmd_quantize(args: argparse.Namespace) -> int:
 
     project_dir = Path(args.project_dir)
     midi_in = project_dir / "project.mid"
-    beats_json = project_dir / "beats.json"
-    ts_json = project_dir / "time_signatures.json"
+    # v0.5.1 修 5：beats/time-signatures 中间产物在 ws/（兼容旧 flat 布局）
+    def _find_artifact(name: str) -> Path:
+        ws_path = project_dir / "ws" / name
+        if ws_path.exists():
+            return ws_path
+        return project_dir / name
+    beats_json = _find_artifact("beats.json")
+    ts_json = _find_artifact("time_signatures.json")
 
     if not midi_in.exists():
         logger.error("missing {}", midi_in)
@@ -227,22 +248,22 @@ def cmd_multitrack(args: argparse.Namespace) -> int:
 
     # 写 project.mid + project.json
     from mujik.midi.io import write_project_to_midi
-    from mujik.time_signature.model import build_default_segments
     from mujik.midi.model import TempoSegment
+    from mujik.time_signature.model import build_default_segments
     # 兜底：muscriptor 输出可能没 time_signatures
     if not project.time_signatures:
         project.time_signatures = build_default_segments(project.duration or 1.0)
     if not project.tempo_map:
         project.tempo_map = [TempoSegment(0.0, project.duration or 1.0, 120.0)]
     project.metadata.update({
-        "mujik_version": "0.4.2",
+        "mujik_version": __version__,
         "transcribe_mode": "multitrack",
         "muscriptor_model": args.model,
     })
     write_project_to_midi(project, out_dir / "project.mid")
     (out_dir / "project.json").write_text(
         json.dumps({
-            "mujik_version": "0.4.2",
+            "mujik_version": __version__,
             "transcribe_mode": "multitrack",
             "muscriptor_model": args.model,
             "tracks": list(project.tracks.keys()),
@@ -321,6 +342,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_run = sub.add_parser("run", help="run the full pipeline")
     p_run.add_argument("--input", "-i", required=True, help="input audio file")
     p_run.add_argument("--output", "-o", required=True, help="output directory")
+    p_run.add_argument(
+        "--workspace", "-w", default=None,
+        help="intermediate artifacts dir (default: <output>/ws)",
+    )
     p_run.add_argument("--config", "-c", help="config YAML file")
     p_run.add_argument("--preset", choices=["pop", "jazz", "metal", "custom"])
     p_run.set_defaults(func=cmd_run)

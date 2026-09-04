@@ -135,19 +135,39 @@ class ChordRecognitionMetrics:
             return {"majmin": 0.0, "root": 0.0, "sevenths": 0.0,
                     "n_pred": len(pred_chords), "n_gt": 0}
 
-        # 转换为 mir_eval 格式：[(start, end, label_str), ...]
+        # 转换为 mir_eval 格式：(intervals [n,2] float, labels list[str])
+        # v0.5.1 修：mir_eval.chord.evaluate 签名是
+        # (ref_intervals, ref_labels, est_intervals, est_labels) 四参数，
+        # 原实现只传 2 个数组——dev 镜像未装 mir_eval 走 ImportError 分支，
+        # 一直没暴露（ml 镜像装 mir_eval 0.8.2 后 TypeError）
+        # mir_eval 只认完整 quality 名（min/maj7/min7...），不认 "m" 缩写
+        _Q2MEVAL = {
+            "": "maj", "maj": "maj", "M": "maj",
+            "m": "min", "min": "min",
+            "dim": "dim", "aug": "aug",
+            "7": "7", "maj7": "maj7",
+            "m7": "min7", "min7": "min7",
+            "dim7": "dim7", "hdim7": "hdim7", "m7b5": "m7b5",
+            "sus2": "sus2", "sus4": "sus4",
+            "6": "6", "maj6": "maj6", "m6": "min6", "min6": "min6",
+            "9": "9", "maj9": "maj9", "m9": "min9", "min9": "min9",
+            "11": "11", "13": "13",
+        }
+
         def to_meval(chords):
-            return [
-                (s, e, f"{r}:{q}" if q else r)
-                for s, e, r, q in chords
+            intervals = np.array(
+                [(s, e) for s, e, _, _ in chords], dtype=float,
+            ).reshape(-1, 2)
+            labels = [
+                f"{r}:{_Q2MEVAL.get(q, q)}" for _, _, r, q in chords
             ]
+            return intervals, labels
 
         try:
             import mir_eval
-            scores = mir_eval.chord.evaluate(
-                np.asarray(to_meval(gt_chords)),
-                np.asarray(to_meval(pred_chords)),
-            )
+            ref_iv, ref_lb = to_meval(gt_chords)
+            est_iv, est_lb = to_meval(pred_chords)
+            scores = mir_eval.chord.evaluate(ref_iv, ref_lb, est_iv, est_lb)
             # scores: dict with 'root', 'thirds', 'triads', 'sevenths', 'majmin', 'mirex'
             return {
                 "majmin": round(float(scores.get("majmin", 0.0)), 4),

@@ -20,7 +20,7 @@ source_separation:
 transcribe:
   vocals: "basic-pitch"
   bass: "basic-pitch"
-  drums: "adtof"
+  drums: "drumscript"  # v0.5.2：adtof 弃用（原仓库死链 + CC-BY-NC-SA 权重）
   piano: "bytedance-piano"
   guitar: "apollo"
   other: "basic-pitch"
@@ -31,9 +31,10 @@ transcribe:
   max_polyphony: 6
 
 rhythm:
-  beat_tracker: "beat-transformer"
-  time_signature_model: "resnet18-meter2800"
-  time_signature_fallback: [4, 4]
+  # v0.5.2 注：beat_tracker 实际固定 madmom CRNN，time_signature_model
+  # 实际固定 downbeat 启发式——下面两个值是预留位，改了不生效
+  beat_tracker: "madmom"  # 实际固定 madmom（beat-transformer/beatnet 未接线）
+  time_signature_model: "heuristic-downbeat"  # 实际固定启发式（resnet18 未接线）
   allow_user_override: true
   confidence_threshold: 0.6
 

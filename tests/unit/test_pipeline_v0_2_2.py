@@ -71,14 +71,14 @@ class TestRhythmEnabled:
         audio.write_bytes(b"RIFF")
         cfg = _base_cfg(tmp_path)
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
              patch("soundfile.info") as mock_info:
             mock_info.return_value = MagicMock(duration=5.0, samplerate=44100)
             Pipeline(cfg).run()
 
-        beats_path = tmp_path / "out" / "beats.json"
+        beats_path = tmp_path / "out" / "ws" / "beats.json"  # v0.5.1 修 5：中间产物在 ws/
         assert beats_path.exists()
         data = json.loads(beats_path.read_text())
         assert data["bpm"] == 120.0
@@ -90,14 +90,14 @@ class TestRhythmEnabled:
         audio.write_bytes(b"RIFF")
         cfg = _base_cfg(tmp_path)
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
              patch("soundfile.info") as mock_info:
             mock_info.return_value = MagicMock(duration=5.0, samplerate=44100)
             Pipeline(cfg).run()
 
-        ts_path = tmp_path / "out" / "time_signatures.json"
+        ts_path = tmp_path / "out" / "ws" / "time_signatures.json"  # v0.5.1 修 5
         assert ts_path.exists()
         data = json.loads(ts_path.read_text())
         assert len(data) >= 1
@@ -108,7 +108,7 @@ class TestRhythmEnabled:
         audio.write_bytes(b"RIFF")
         cfg = _base_cfg(tmp_path)
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
              patch("soundfile.info") as mock_info:
@@ -116,7 +116,7 @@ class TestRhythmEnabled:
             Pipeline(cfg).run()
 
         meta = json.loads((tmp_path / "out" / "project.json").read_text())
-        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0", "0.5.1")
+        assert meta["mujik_version"] in ("0.2.2", "0.4.0", "0.4.1", "0.4.2", "0.4.3", "0.4.4", "0.4.5", "0.4.6", "0.4.7", "0.4.8", "0.4.9", "0.5.0", "0.5.1", "0.5.2")
         assert meta["rhythm_enabled"] is True
 
     def test_project_mid_has_tempo(self, tmp_path: Path):
@@ -125,7 +125,7 @@ class TestRhythmEnabled:
         audio.write_bytes(b"RIFF")
         cfg = _base_cfg(tmp_path)
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
              patch("soundfile.info") as mock_info:
@@ -148,7 +148,7 @@ class TestRhythmFailure:
             from mujik.rhythm.madmom_adapter import MadmomAdapterError
             raise MadmomAdapterError("simulated fail")
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=fake_fail), \
              patch("soundfile.info") as mock_info:
@@ -156,7 +156,7 @@ class TestRhythmFailure:
             Pipeline(cfg).run()
 
         # beats.json 仍写出（默认 120）
-        beats = json.loads((tmp_path / "out" / "beats.json").read_text())
+        beats = json.loads((tmp_path / "out" / "ws" / "beats.json").read_text())
         assert beats["bpm"] == 120.0
 
 
@@ -172,7 +172,7 @@ class TestRhythmDisabled:
             rhythm=__import__("mujik.config.schema", fromlist=["RhythmConfig"]).RhythmConfig(enabled=False),
         )
 
-        with patch("mujik.pipeline.separate_with_demucs", side_effect=_fake_separate), \
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
              patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
              patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom) as mock_bt, \
              patch("soundfile.info") as mock_info:

@@ -13,5 +13,5 @@ quantize:
   strength: 0.6         # 弱化以保留节奏型
 
 transcribe:
-  drums: "adtof"
+  drums: "drumscript"  # v0.5.2：adtof 弃用（原仓库死链 + CC-BY-NC-SA 权重）
   # 后续可换 DrumTransformer 微调
