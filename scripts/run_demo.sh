@@ -64,6 +64,18 @@ else
 fi
 
 # --- 环境探测（整脚本一次）---
+# macOS：cairosvg 需要 libcairo；sandbox/launchd 派生环境下外部传入的
+# DYLD_* 会被剥离，脚本内自补 Homebrew 路径（v0.5.3：此前 demo 内
+# render pdf 因找不到 libcairo 静默失败，只有手动带 env 重跑才成功）
+if [[ "$(uname)" == "Darwin" ]]; then
+  for _libdir in /opt/homebrew/lib /usr/local/lib; do
+    if [[ -f "$_libdir/libcairo.2.dylib" ]]; then
+      export DYLD_FALLBACK_LIBRARY_PATH="$_libdir${DYLD_FALLBACK_LIBRARY_PATH:+:$DYLD_FALLBACK_LIBRARY_PATH}"
+      break
+    fi
+  done
+fi
+
 HAS_MUJIK=0
 command -v mujik >/dev/null 2>&1 && HAS_MUJIK=1
 # verovio 能力 = python 包（verovio 无独立 CLI 可执行；SVG→PDF 走 mujik render 内部管线）
@@ -146,8 +158,9 @@ run_once() {
       }
     fi
     if [[ $HAS_VEROVIO -eq 1 ]] && [[ -f "$out_dir/score.musicxml" ]]; then
+      # v0.5.3: render 失败计入 FAIL_COUNT（此前静默 ⚠ 后照常 ✅，违反 fail-loud）
       mujik render --input "$out_dir/score.musicxml" --output "$out_dir/score.pdf" --pdf \
-        || echo "[demo] ⚠ render pdf 失败"
+        || { echo "[demo] ⚠ render pdf 失败"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
     fi
   done
 

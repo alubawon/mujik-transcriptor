@@ -500,6 +500,28 @@ class Pipeline:
         )
         prog.advance("midi-write", extra=f"{project.total_notes()} notes")
 
+        # ---- 6b. per-stem MIDI（ws/tracks/<stem>.mid，含真实 tempo）----
+        # v0.5.3：basic-pitch CLI 在 ws/tracks 留下的 *_basic_pitch.mid 没有
+        # tempo 事件（DAW 打开恒显示 120），drumscript 只产 CSV 不产 mid——
+        # 用户按 stem 查看 MIDI 时要么看到假 BPM 要么找不到鼓。统一由这里
+        # 用 project 的 tempo_map/time_signatures 导出，并删除 CLI 自产文件。
+        tracks_dir = ws_dir / "tracks"
+        tracks_dir.mkdir(parents=True, exist_ok=True)
+        for stem_name, track in project.tracks.items():
+            sub_project = replace(project, tracks={stem_name: track})
+            write_project_to_midi(sub_project, tracks_dir / f"{stem_name}.mid")
+        for stale_mid in tracks_dir.glob("*_basic_pitch.mid"):
+            stale_mid.unlink()
+            logger.info(
+                "pipeline[6/7]: removed CLI-side {p} (superseded by <stem>.mid)",
+                p=stale_mid.name,
+            )
+        logger.info(
+            "pipeline[6/7]: wrote per-stem MIDI → {d} ({n} files)",
+            d=tracks_dir, n=len(project.tracks),
+        )
+        prog.advance("per-stem-midi", extra=f"{len(project.tracks)} files")
+
         # ---- 7. 写 metadata sidecar ----
         meta_path = out_dir / "project.json"
         meta_path.write_text(json.dumps(

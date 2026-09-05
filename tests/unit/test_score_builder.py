@@ -302,6 +302,73 @@ class TestBuildMusicxml:
         assert "<harmony>" not in xml
 
 
+class TestPitchedPartStructure:
+    """v0.5.3：有音高 part 结构修复——无重复 measure 编号、attributes 仅首小节、
+    标题 + metronome 速度记号可见。"""
+
+    def _xml(self, **kwargs) -> str:
+        proj = _project({
+            "vocals": _track([
+                Note(0.0, 0.5, 60, 100),
+                Note(0.5, 1.0, 62, 90),
+            ], "vocals"),
+        }, **kwargs)
+        return build_musicxml(proj)
+
+    def test_no_duplicate_measure_number_1(self):
+        """旧版 part 开头多一个只含 attributes 的空 measure 1，与真实小节编号重复。"""
+
+        xml = self._xml()
+        assert xml.count('<measure number="1">') == 1
+
+    def test_attributes_only_in_first_measure(self):
+
+        xml = self._xml()
+        assert xml.count("<attributes>") == 1
+
+    def test_work_title_from_audio_path(self):
+        xml = self._xml()
+        assert "<work-title>song</work-title>" in xml
+        assert "<movement-title>song</movement-title>" in xml
+
+    def test_work_title_strips_ws_prefix_and_duration_tag(self):
+        proj = _project({
+            "vocals": _track([Note(0.0, 1.0, 60, 100)], "vocals"),
+        })
+        proj.audio_path = "/x/y/loudnorm_buhee_189s.wav"
+        xml = build_musicxml(proj)
+        assert "<work-title>buhee</work-title>" in xml
+
+    def test_metronome_direction_renders_bpm(self):
+        """裸 <sound tempo> verovio 不显示；必须带 <metronome> direction。"""
+        proj = _project(
+            {"vocals": _track([Note(0.0, 1.0, 60, 100)], "vocals")},
+            tempo=[TempoSegment(0.0, 5.0, 144.0)],
+        )
+        xml = build_musicxml(proj)
+        assert "<metronome" in xml
+        assert "<per-minute>144.0</per-minute>" in xml
+        # <sound tempo> 保留（MIDI 语义）
+        assert 'tempo="144.0"' in xml
+
+    def test_drum_part_also_has_metronome(self):
+        proj = _project({
+            "drums": _track([Note(0.0, 0.1, 36, 100, channel=9)], "drums", channel=9),
+        })
+        xml = build_musicxml(proj)
+        assert "<per-minute>120.0</per-minute>" in xml
+
+    def test_multi_measure_notes_span_measures(self):
+        # 3 秒 @120BPM 4/4 = 1.5 小节 → 2 个小节且编号 1、2
+        import re
+
+        notes = [Note(float(i) * 0.25, float(i) * 0.25 + 0.2, 60 + i, 100) for i in range(12)]
+        proj = _project({"vocals": _track(notes, "vocals")}, duration=3.0)
+        xml = build_musicxml(proj)
+        nums = re.findall(r'<measure number="(\d+)">', xml)
+        assert nums == ["1", "2"]
+
+
 class TestDrumPartMusicxml:
     """v0.5.3 重写后的鼓 part：结构合法 + 时值一致 + 并击 + rest 补齐。"""
 

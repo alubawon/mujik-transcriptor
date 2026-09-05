@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -137,6 +137,55 @@ class TestRhythmEnabled:
         assert project.tempo_map[0].bpm != 120.0 or True  # 来自 madmom
 
 
+class TestPerStemMidi:
+    """v0.5.3：ws/tracks/<stem>.mid 统一导出（含真实 tempo），CLI 自产 mid 清除。"""
+
+    def _run(self, tmp_path: Path):
+        audio = tmp_path / "song.wav"
+        audio.write_bytes(b"RIFF")
+        cfg = _base_cfg(tmp_path)
+        with patch("mujik.separate.demucs_adapter.separate_with_demucs", side_effect=_fake_separate), \
+             patch("mujik.pipeline.transcribe_stem", side_effect=_fake_transcribe), \
+             patch("mujik.pipeline.track_beats_with_madmom", side_effect=_fake_madmom), \
+             patch("soundfile.info") as mock_info:
+            mock_info.return_value = MagicMock(duration=5.0, samplerate=44100)
+            return Pipeline(cfg).run()
+
+    def test_per_stem_mids_written_with_tempo(self, tmp_path: Path):
+        import mido
+
+        project = self._run(tmp_path)
+        tracks_dir = tmp_path / "out" / "ws" / "tracks"
+        for stem_name in project.tracks:
+            mid_path = tracks_dir / f"{stem_name}.mid"
+            assert mid_path.exists(), f"missing {mid_path}"
+            mf = mido.MidiFile(mid_path)
+            tempos = [
+                mido.tempo2bpm(msg.tempo)
+                for tr in mf.tracks for msg in tr if msg.type == "set_tempo"
+            ]
+            # 每个 per-stem mid 必须带真实 tempo（旧 CLI 产物是无 tempo 的 120）
+            assert tempos == [120.0], f"{stem_name}: tempos={tempos}"
+
+    def test_drum_stem_mid_has_notes(self, tmp_path: Path):
+        """drumscript 只产 CSV——per-stem 导出保证鼓也有可直接查看的 mid。"""
+        import mido
+
+        self._run(tmp_path)
+        mid_path = tmp_path / "out" / "ws" / "tracks" / "drums.mid"
+        mf = mido.MidiFile(mid_path)
+        notes = sum(
+            1 for tr in mf.tracks
+            for msg in tr if msg.type == "note_on" and msg.velocity > 0
+        )
+        assert notes == 1  # _fake_transcribe 给 drums 一击
+
+    def test_cli_side_basic_pitch_mids_removed(self, tmp_path: Path):
+        self._run(tmp_path)
+        tracks_dir = tmp_path / "out" / "ws" / "tracks"
+        assert list(tracks_dir.glob("*_basic_pitch.mid")) == []
+
+
 class TestRhythmFailure:
     def test_madmom_failure_uses_default(self, tmp_path: Path):
         """madmom 失败时回退默认 tempo + 拍号。"""
@@ -164,7 +213,6 @@ class TestRhythmFailure:
 
 class TestRhythmDisabled:
     def test_no_rhythm_files_when_disabled(self, tmp_path: Path):
-        from mujik.config.schema import RhythmConfig
         audio = tmp_path / "song.wav"
         audio.write_bytes(b"RIFF")
         cfg = PipelineConfig(

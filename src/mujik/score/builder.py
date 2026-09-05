@@ -18,7 +18,10 @@
 """
 from __future__ import annotations
 
+import re
+from pathlib import Path
 from typing import Literal
+from xml.sax.saxutils import escape
 
 from loguru import logger
 
@@ -121,21 +124,13 @@ def _build_part_musicxml(
     for mi, mnotes in enumerate(measure_groups):
         measure_xml = _build_measure_musicxml(
             mi + 1, mnotes, project, ppq, include_chord_symbols,
+            is_first=(mi == 0),
         )
         measure_xmls.append(measure_xml)
 
     measures_str = "\n    ".join(measure_xmls)
     return f"""  <part id="{part_id}">
-    <measure number="1">
-      <attributes>
-        <divisions>{ppq}</divisions>
-        <key><fifths>0</fifths></key>
-        <time><beats>{project.time_signatures[0].time_signature[0] if project.time_signatures else 4}</beats><beat-type>{project.time_signatures[0].time_signature[1] if project.time_signatures else 4}</beat-type></time>
-        <clef><sign>G</sign><line>2</line></clef>
-      </attributes>
-      {_tempo_directive_xml(project.tempo_map)}
-    </measure>
-    {measures_str}
+{measures_str}
   </part>"""
 
 
@@ -152,7 +147,7 @@ def _build_empty_part_musicxml(
         <time><beats>{sig[0]}</beats><beat-type>{sig[1]}</beat-type></time>
         <clef><sign>G</sign><line>2</line></clef>
       </attributes>
-      {_tempo_directive_xml(project.tempo_map)}
+      {_tempo_direction_xml(project.tempo_map)}
       <note>
         <rest/>
         <duration>{ppq * sig[0] * 4 // sig[1]}</duration>
@@ -288,7 +283,7 @@ def _build_drum_part_musicxml(
                 f"        <time><beats>{sig[0]}</beats><beat-type>{sig[1]}</beat-type></time>\n"
                 f"        <clef><sign>percussion</sign><line>2</line></clef>\n"
                 f"      </attributes>\n"
-                f"{_tempo_directive_xml(project.tempo_map)}"
+                f"{_tempo_direction_xml(project.tempo_map)}"
             )
         measure_xmls.append(
             f"""    <measure number="{mi + 1}">
@@ -340,6 +335,7 @@ def _build_measure_musicxml(
     project: Project,
     ppq: int,
     include_chord_symbols: bool,
+    is_first: bool = False,
 ) -> str:
     """构造单个 <measure> 的 XML。
 
@@ -348,6 +344,9 @@ def _build_measure_musicxml(
       覆盖该 measure 起始时间的 chord，在第一个 note 之前插入 ``<harmony>``
     - ``note.pitch_bend`` 非空且 alter != 0 时，在该 note ``<type>`` 之后
       插入 ``<bend>`` 元素
+    - v0.5.3 修：``<attributes>``（divisions/key/time/clef）+ 速度记号只在
+      首小节（is_first）发一次——旧版每小节重复完整 attributes 且 part
+      开头多一个与后续编号重复的空 measure 1，verovio 小节线/编号全乱
     """
     # v0.4.1: 找覆盖 measure 起始时间的 chord（measure 内仅发一次 harmony）
     harmony_xml = ""
@@ -390,15 +389,23 @@ def _build_measure_musicxml(
         </note>"""
         )
     notes_str = "\n".join(note_xmls) if note_xmls else _rest_xml(ppq)
-    sig = project.time_signatures[0].time_signature if project.time_signatures else (4, 4)
+    head_xml = ""
+    if is_first:
+        sig = (
+            project.time_signatures[0].time_signature
+            if project.time_signatures else (4, 4)
+        )
+        head_xml = (
+            f"      <attributes>\n"
+            f"        <divisions>{ppq}</divisions>\n"
+            f"        <key><fifths>0</fifths></key>\n"
+            f"        <time><beats>{sig[0]}</beats><beat-type>{sig[1]}</beat-type></time>\n"
+            f"        <clef><sign>G</sign><line>2</line></clef>\n"
+            f"      </attributes>\n"
+            f"{_tempo_direction_xml(project.tempo_map)}"
+        )
     return f"""    <measure number="{measure_num}">
-      <attributes>
-        <divisions>{ppq}</divisions>
-        <key><fifths>0</fifths></key>
-        <time><beats>{sig[0]}</beats><beat-type>{sig[1]}</beat-type></time>
-        <clef><sign>G</sign><line>2</line></clef>
-      </attributes>
-{harmony_xml}{notes_str}
+{head_xml}{harmony_xml}{notes_str}
     </measure>"""
 
 
@@ -424,12 +431,39 @@ def _ticks_to_type(ticks: int, ppq: int) -> str:
     return "16th"
 
 
-def _tempo_directive_xml(tempo_map: list[TempoSegment]) -> str:
-    """生成 <sound tempo="..."/> 元素。"""
+def _tempo_direction_xml(tempo_map: list[TempoSegment]) -> str:
+    """速度记号：<metronome> direction（verovio 才会画在谱面上）+ <sound tempo>。
+
+    v0.5.3 修：旧版只发裸 <sound tempo="..."/>，verovio 不渲染它——
+    用户打开 PDF 看不到任何 BPM 信息。beat-unit 固定 quarter（BPM 约定
+    为四分音符/分钟）。
+    """
     if not tempo_map:
         return ""
     bpm = float(tempo_map[0].bpm)
-    return f'      <sound tempo="{bpm:.1f}"/>\n'
+    return (
+        '      <direction placement="above">\n'
+        '        <direction-type>\n'
+        '          <metronome parentheses="no">\n'
+        '            <beat-unit>quarter</beat-unit>\n'
+        f'            <per-minute>{bpm:.1f}</per-minute>\n'
+        '          </metronome>\n'
+        '        </direction-type>\n'
+        f'        <sound tempo="{bpm:.1f}"/>\n'
+        '      </direction>\n'
+    )
+
+
+def _score_title(project: Project) -> str:
+    """从 audio_path 推谱面标题。
+
+    去掉 ws 中间产物的命名前缀（loudnorm_/denoised_）和时长后缀
+    （_189s），buhee 实际音频 loudnorm_buhee_189s.wav → "buhee"。
+    """
+    stem = Path(project.audio_path).stem if project.audio_path else ""
+    stem = re.sub(r"^(loudnorm|denoised)_", "", stem)
+    stem = re.sub(r"_\d+s$", "", stem)
+    return escape(stem) if stem else "Untitled"
 
 
 def build_musicxml(
@@ -452,13 +486,16 @@ def build_musicxml(
 
     # part-list
     part_list_entries: list[str] = []
-    for i, (stem, track) in enumerate(tracks.items(), 1):
+    for i, (stem, _track) in enumerate(tracks.items(), 1):
         part_id = f"P{i}"
         part_name = stem
         part_list_entries.append(
             f'    <score-part id="{part_id}"><part-name>{part_name}</part-name></score-part>'
         )
     part_list_str = "\n".join(part_list_entries)
+
+    # v0.5.3: 谱面总体信息（标题）——旧版无 <work-title>，PDF 顶部空白
+    title = _score_title(project)
 
     # parts
     part_xmls: list[str] = []
@@ -474,6 +511,10 @@ def build_musicxml(
     musicxml = f"""<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 3.1 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
 <score-partwise version="3.1">
+  <work>
+    <work-title>{title}</work-title>
+  </work>
+  <movement-title>{title}</movement-title>
   <part-list>
 {part_list_str}
   </part-list>
