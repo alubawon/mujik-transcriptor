@@ -12,7 +12,6 @@ from mujik.render.verovio_svg_pdf import (
     check_svg_pdf_available,
     render_musicxml_to_pdf_via_svg,
 )
-
 from tests.unit.test_verovio_backend import SIMPLE_MUSICXML
 
 
@@ -92,3 +91,69 @@ class TestRenderPdfViaSvg:
         result = render_musicxml_to_pdf_via_svg(SIMPLE_MUSICXML, out)
         assert result == out
         assert out.read_bytes().startswith(b"%PDF")
+
+
+class TestInlineMusicFontGlyphs:
+    """v0.5.3：verovio 的 <tspan font-family="Leipzig">SMuFL</tspan> → 内嵌 path。
+
+    cairosvg 走系统字体查不到 Leipzig（Docker/macOS 默认没装）→ metronome
+    beat-unit 字符（♩）渲染成豆腐块。后处理用 verovio 自带 data/Leipzig/
+    的字形 path 就地替换，零系统字体依赖。
+    """
+
+    # verovio tempo direction 的实际输出形态（buhee page1 实测）
+    TEMPO_SVG = (
+        '<g id="t1" class="tempo">'
+        '<text x="2188" y="1209" font-size="0px">'
+        '<tspan class="rend"><tspan class="text">'
+        '<tspan font-family="Leipzig" font-size="720px"></tspan>'
+        "</tspan></tspan>"
+        '<tspan class="text"><tspan font-size="405px">\xa0=\xa0</tspan></tspan>'
+        '<tspan class="text"><tspan font-size="405px">125.0</tspan></tspan>'
+        "</text></g>"
+    )
+
+    def test_leipzig_tspan_replaced_with_path(self):
+        from mujik.render.verovio_svg_pdf import _inline_music_font_glyphs
+
+        out = _inline_music_font_glyphs(self.TEMPO_SVG)
+        assert 'font-family="Leipzig"' not in out
+        # 字形 path + font-unit→px 缩放（720px / 1000 upem = 0.72）
+        assert '<path fill="#000000"' in out
+        assert "translate(2188.00,1209.00) scale(0.720000,-0.720000)" in out
+        # 数字部分保留为独立 <text>，x = 2188 + advance*0.72（ECA5 advance=302）
+        assert '<text x="2405.44" y="1209.00" font-size="405px">' in out
+        assert "\xa0=\xa0125.0" in out
+
+    def test_glyph_resolved_from_verovio_package(self):
+        from mujik.render.verovio_svg_pdf import _leipzig_glyph
+
+        # ECA5 = metNoteQuarterUp（buhee 实测字符）
+        glyph = _leipzig_glyph(0xECA5)
+        assert glyph is not None
+        path_d, advance = glyph
+        assert path_d.startswith("M")
+        assert advance > 0
+
+    def test_non_pua_leipzig_text_untouched(self):
+        from mujik.render.verovio_svg_pdf import _inline_music_font_glyphs
+
+        svg = '<text x="10" y="20"><tspan font-family="Leipzig" font-size="100px">abc</tspan></text>'
+        assert _inline_music_font_glyphs(svg) == svg
+
+    def test_missing_glyph_keeps_block_and_warns(self):
+
+        from mujik.render.verovio_svg_pdf import _inline_music_font_glyphs
+
+        svg = (
+            '<text x="1" y="2" font-size="0px">'
+            '<tspan font-family="Leipzig" font-size="100px">蓮</tspan>'
+            "</text>"
+        )
+        assert _inline_music_font_glyphs(svg) == svg
+
+    def test_plain_text_block_untouched(self):
+        from mujik.render.verovio_svg_pdf import _inline_music_font_glyphs
+
+        svg = '<text x="5" y="6" font-size="405px">125.0</text>'
+        assert _inline_music_font_glyphs(svg) == svg
