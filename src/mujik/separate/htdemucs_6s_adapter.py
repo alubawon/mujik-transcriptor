@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -72,18 +73,27 @@ def separate_with_htdemucs_6s(
         tmp_out.mkdir(parents=True, exist_ok=True)
 
         cmd = [
-            "python", "-m", "demucs",
+            # 裸 "python" 在 macOS/容器里不可靠——用当前解释器（venv 内必有 demucs）
+            sys.executable, "-m", "demucs",
             "-n", "htdemucs_6s",
             "--device", cfg.device,
             "--out", str(tmp_out),
-            "--segment", str(cfg.segment_length),
+            # demucs CLI 的 --segment 只收 int 秒，schema 里是 float（7.8）；
+            # HTDemucs-6s 是 Transformer，segment 超过训练值（7.8s）直接报错 →
+            # 必须向下取整而非 round（round(7.8)=8 会炸）
+            "--segment", str(int(cfg.segment_length)),
             "--overlap", str(cfg.overlap),
             "--jobs", str(cfg.jobs),
             str(input_path),
         ]
-        # 浮点精度
+        # 浮点精度：demucs v4 CLI 没有 --float16/--bf16（已移除），子进程路径
+        # 只能 fp32——显式 warning 而非静默忽略（config 不说谎）
         if cfg.precision in ("fp16", "bf16"):
-            cmd.extend(["--float16" if cfg.precision == "fp16" else "--bf16"])
+            logger.warning(
+                "htdemucs_6s subprocess runs fp32 (demucs CLI has no {p} flag); "
+                "cfg.precision={p} ignored",
+                p=cfg.precision,
+            )
 
         logger.info(
             "htdemucs_6s subprocess: cmd={cmd}",

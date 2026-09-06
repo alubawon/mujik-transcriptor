@@ -21,6 +21,7 @@ SDR/SIR/SAR 评估（SiSEC 标准，museval 实现）。
 from __future__ import annotations
 
 import json
+import random
 import statistics
 import tempfile
 import time
@@ -63,7 +64,8 @@ def load_musdb(root: str | Path, subset: str = "test", is_wav: bool = False):
             f"自行下载 MUSDB18/MUSDB18-HQ（https://sigsep.github.io/datasets/musdb.html），"
             f"仓库不携带数据"
         )
-    return musdb.DB(root=str(root), subset=subset, is_wav=is_wav)
+    # musdb 0.3.x 的参数是 subsets=[...]（列表），不存在 subset= kwarg
+    return musdb.DB(root=str(root), subsets=[subset], is_wav=is_wav)
 
 
 def _evaluate_stems(
@@ -123,6 +125,8 @@ def run_separation_benchmark(
     variant: str = "htdemucs_ft",
     device: str = "cpu",
     limit: int | None = None,
+    sample: int | None = None,
+    seed: int = 0,
     work_dir: str | Path | None = None,
 ) -> dict:
     """对 MUSDB18 子集逐轨跑 demucs 分离 + museval 评估。
@@ -141,6 +145,9 @@ def run_separation_benchmark(
     from mujik.separate.router import separate_audio
 
     tracks = load_musdb(musdb_root, subset=subset, is_wav=is_wav)
+    if sample is not None and sample > 0:
+        # 随机抽样（seed 固定，结果可复现）；test 集按字母序排列，前 N 轨有偏
+        tracks = random.Random(seed).sample(list(tracks), min(sample, len(tracks)))
     if limit is not None and limit > 0:
         tracks = tracks[:limit]
     if not tracks:
@@ -173,6 +180,22 @@ def run_separation_benchmark(
                 continue
             est, _ = sf.read(stem.audio_path, dtype="float64")
             estimates[stem_name] = est
+
+        if variant == "htdemucs_6s":
+            # 口径对齐：htdemucs_6s 的 other 是"piano/guitar 之外的其余"，
+            # 而 MUSDB GT 的 other **包含** piano+guitar——直接同名对比会把
+            # piano/guitar 全记成 interference（SAR 崩到负数，SDR≈0）。
+            # MUSDB 无 piano/guitar 单独 GT，公平对比只能加回 other。
+            if "other" not in estimates:
+                raise SeparationBenchmarkError(
+                    "htdemucs_6s output missing 'other' stem"
+                )
+            for extra in ("piano", "guitar"):
+                stem = stems.get(extra)
+                if stem is None:
+                    continue
+                est, _ = sf.read(stem.audio_path, dtype="float64")
+                estimates["other"] = estimates["other"] + est
 
         references = {
             name: track.targets[name].audio for name in SEPARATION_STEMS if name in track.targets
@@ -276,6 +299,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--device", choices=["cpu", "cuda", "mps"], default="cpu")
     parser.add_argument("--limit", type=int, default=None, help="只跑前 N 轨")
     parser.add_argument(
+        "--sample", type=int, default=None, help="随机抽 N 轨（配合 --seed 可复现）"
+    )
+    parser.add_argument("--seed", type=int, default=0, help="随机抽样种子")
+    parser.add_argument(
         "--work-dir", default=None, help="分离产物目录（默认临时目录，评估完保留 stems）"
     )
     parser.add_argument("--output", "-o", default="sep_bench.md")
@@ -289,6 +316,8 @@ def main(argv: list[str] | None = None) -> int:
         variant=args.variant,
         device=args.device,
         limit=args.limit,
+        sample=args.sample,
+        seed=args.seed,
         work_dir=args.work_dir,
     )
 
