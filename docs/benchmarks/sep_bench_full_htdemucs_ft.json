@@ -1,0 +1,1634 @@
+{
+  "variant": "htdemucs_ft",
+  "device": "mps",
+  "subset": "test",
+  "n_tracks": 50,
+  "total_elapsed_sec": 34746.9,
+  "total_sep_sec": 15885.2,
+  "total_eval_sec": 18753.9,
+  "tracks": [
+    {
+      "track": "AM Contra - Heart Peripheral",
+      "duration_sec": 210.1,
+      "sep_time_sec": 269.8,
+      "eval_time_sec": 434.2,
+      "scores": {
+        "vocals": {
+          "SDR": 11.659,
+          "SIR": 20.501,
+          "SAR": 12.569,
+          "ISR": 19.301
+        },
+        "drums": {
+          "SDR": 8.364,
+          "SIR": 17.388,
+          "SAR": 9.395,
+          "ISR": 13.445
+        },
+        "bass": {
+          "SDR": -1.014,
+          "SIR": -1.565,
+          "SAR": 8.191,
+          "ISR": 12.407
+        },
+        "other": {
+          "SDR": 0.664,
+          "SIR": 2.399,
+          "SAR": 0.051,
+          "ISR": 1.296
+        }
+      }
+    },
+    {
+      "track": "Al James - Schoolboy Facination",
+      "duration_sec": 200.5,
+      "sep_time_sec": 305.5,
+      "eval_time_sec": 427.6,
+      "scores": {
+        "vocals": {
+          "SDR": 7.707,
+          "SIR": 16.294,
+          "SAR": 8.23,
+          "ISR": 13.136
+        },
+        "drums": {
+          "SDR": 7.205,
+          "SIR": 15.611,
+          "SAR": 7.743,
+          "ISR": 12.825
+        },
+        "bass": {
+          "SDR": 10.476,
+          "SIR": 20.62,
+          "SAR": 11.32,
+          "ISR": 16.824
+        },
+        "other": {
+          "SDR": 3.909,
+          "SIR": 7.602,
+          "SAR": 4.54,
+          "ISR": 10.073
+        }
+      }
+    },
+    {
+      "track": "Angels In Amplifiers - I'm Alright",
+      "duration_sec": 179.6,
+      "sep_time_sec": 303.5,
+      "eval_time_sec": 264.7,
+      "scores": {
+        "vocals": {
+          "SDR": 11.228,
+          "SIR": 21.803,
+          "SAR": 11.556,
+          "ISR": 20.368
+        },
+        "drums": {
+          "SDR": 7.369,
+          "SIR": 21.243,
+          "SAR": 9.592,
+          "ISR": 10.044
+        },
+        "bass": {
+          "SDR": 10.644,
+          "SIR": 18.614,
+          "SAR": 11.61,
+          "ISR": 18.344
+        },
+        "other": {
+          "SDR": 8.42,
+          "SIR": 13.009,
+          "SAR": 10.001,
+          "ISR": 16.709
+        }
+      }
+    },
+    {
+      "track": "Arise - Run Run Run",
+      "duration_sec": 219.4,
+      "sep_time_sec": 328.6,
+      "eval_time_sec": 449.8,
+      "scores": {
+        "vocals": {
+          "SDR": 12.101,
+          "SIR": 26.256,
+          "SAR": 12.198,
+          "ISR": 21.951
+        },
+        "drums": {
+          "SDR": -3.108,
+          "SIR": -2.38,
+          "SAR": 7.135,
+          "ISR": 21.186
+        },
+        "bass": {
+          "SDR": 8.12,
+          "SIR": 14.715,
+          "SAR": 8.89,
+          "ISR": 22.769
+        },
+        "other": {
+          "SDR": 0.87,
+          "SIR": 17.839,
+          "SAR": 4.323,
+          "ISR": 1.123
+        }
+      }
+    },
+    {
+      "track": "BKS - Bulldozer",
+      "duration_sec": 337.0,
+      "sep_time_sec": 438.2,
+      "eval_time_sec": 519.7,
+      "scores": {
+        "vocals": {
+          "SDR": 9.173,
+          "SIR": 21.84,
+          "SAR": 9.598,
+          "ISR": 15.562
+        },
+        "drums": {
+          "SDR": 12.1,
+          "SIR": 21.761,
+          "SAR": 13.072,
+          "ISR": 19.487
+        },
+        "bass": {
+          "SDR": 10.05,
+          "SIR": 18.723,
+          "SAR": 11.387,
+          "ISR": 15.483
+        },
+        "other": {
+          "SDR": 6.792,
+          "SIR": 12.632,
+          "SAR": 7.518,
+          "ISR": 12.837
+        }
+      }
+    },
+    {
+      "track": "BKS - Too Much",
+      "duration_sec": 220.1,
+      "sep_time_sec": 317.2,
+      "eval_time_sec": 427.9,
+      "scores": {
+        "vocals": {
+          "SDR": 12.411,
+          "SIR": 23.686,
+          "SAR": 12.751,
+          "ISR": 22.245
+        },
+        "drums": {
+          "SDR": 10.522,
+          "SIR": 20.036,
+          "SAR": 11.135,
+          "ISR": 18.281
+        },
+        "bass": {
+          "SDR": 13.595,
+          "SIR": 21.798,
+          "SAR": 14.868,
+          "ISR": 21.461
+        },
+        "other": {
+          "SDR": 6.94,
+          "SIR": 15.417,
+          "SAR": 7.561,
+          "ISR": 11.79
+        }
+      }
+    },
+    {
+      "track": "Ben Carrigan - We'll Talk About It All Tonight",
+      "duration_sec": 254.9,
+      "sep_time_sec": 350.9,
+      "eval_time_sec": 450.0,
+      "scores": {
+        "vocals": {
+          "SDR": 6.086,
+          "SIR": 16.664,
+          "SAR": 6.194,
+          "ISR": 10.378
+        },
+        "drums": {
+          "SDR": 10.262,
+          "SIR": 20.73,
+          "SAR": 10.861,
+          "ISR": 17.244
+        },
+        "bass": {
+          "SDR": 13.597,
+          "SIR": 26.9,
+          "SAR": 13.759,
+          "ISR": 24.556
+        },
+        "other": {
+          "SDR": 6.854,
+          "SIR": 11.231,
+          "SAR": 7.983,
+          "ISR": 15.211
+        }
+      }
+    },
+    {
+      "track": "Bobby Nobody - Stitch Up",
+      "duration_sec": 221.2,
+      "sep_time_sec": 335.7,
+      "eval_time_sec": 430.1,
+      "scores": {
+        "vocals": {
+          "SDR": 10.46,
+          "SIR": 20.939,
+          "SAR": 10.615,
+          "ISR": 20.191
+        },
+        "drums": {
+          "SDR": 7.661,
+          "SIR": 19.775,
+          "SAR": 7.79,
+          "ISR": 12.803
+        },
+        "bass": {
+          "SDR": 8.943,
+          "SIR": 14.598,
+          "SAR": 10.314,
+          "ISR": 18.643
+        },
+        "other": {
+          "SDR": 6.616,
+          "SIR": 13.842,
+          "SAR": 6.796,
+          "ISR": 11.463
+        }
+      }
+    },
+    {
+      "track": "Buitraker - Revo X",
+      "duration_sec": 275.8,
+      "sep_time_sec": 407.5,
+      "eval_time_sec": 510.5,
+      "scores": {
+        "vocals": {
+          "SDR": 5.525,
+          "SIR": 13.727,
+          "SAR": 5.553,
+          "ISR": 10.496
+        },
+        "drums": {
+          "SDR": 13.942,
+          "SIR": 27.096,
+          "SAR": 15.4,
+          "ISR": 19.314
+        },
+        "bass": {
+          "SDR": 11.389,
+          "SIR": 17.67,
+          "SAR": 12.562,
+          "ISR": 22.094
+        },
+        "other": {
+          "SDR": 7.022,
+          "SIR": 12.225,
+          "SAR": 8.226,
+          "ISR": 12.335
+        }
+      }
+    },
+    {
+      "track": "Carlos Gonzalez - A Place For Us",
+      "duration_sec": 250.2,
+      "sep_time_sec": 343.9,
+      "eval_time_sec": 451.3,
+      "scores": {
+        "vocals": {
+          "SDR": 7.815,
+          "SIR": 16.428,
+          "SAR": 7.982,
+          "ISR": 13.979
+        },
+        "drums": {
+          "SDR": 7.295,
+          "SIR": 16.119,
+          "SAR": 7.393,
+          "ISR": 13.335
+        },
+        "bass": {
+          "SDR": 3.371,
+          "SIR": 11.354,
+          "SAR": 2.51,
+          "ISR": 8.287
+        },
+        "other": {
+          "SDR": 6.865,
+          "SIR": 12.019,
+          "SAR": 7.529,
+          "ISR": 15.06
+        }
+      }
+    },
+    {
+      "track": "Cristina Vane - So Easy",
+      "duration_sec": 254.1,
+      "sep_time_sec": 361.8,
+      "eval_time_sec": 433.3,
+      "scores": {
+        "vocals": {
+          "SDR": 11.144,
+          "SIR": 19.666,
+          "SAR": 11.728,
+          "ISR": 20.316
+        },
+        "drums": {
+          "SDR": 13.994,
+          "SIR": 27.201,
+          "SAR": 14.632,
+          "ISR": 21.886
+        },
+        "bass": {
+          "SDR": 7.121,
+          "SIR": 16.703,
+          "SAR": 8.079,
+          "ISR": 11.569
+        },
+        "other": {
+          "SDR": 6.003,
+          "SIR": 11.339,
+          "SAR": 6.424,
+          "ISR": 12.516
+        }
+      }
+    },
+    {
+      "track": "Detsky Sad - Walkie Talkie",
+      "duration_sec": 190.5,
+      "sep_time_sec": 309.4,
+      "eval_time_sec": 424.1,
+      "scores": {
+        "vocals": {
+          "SDR": 5.628,
+          "SIR": 12.382,
+          "SAR": 6.27,
+          "ISR": 20.303
+        },
+        "drums": {
+          "SDR": 5.831,
+          "SIR": 20.477,
+          "SAR": 6.604,
+          "ISR": 8.596
+        },
+        "bass": {
+          "SDR": 4.044,
+          "SIR": 15.217,
+          "SAR": 2.533,
+          "ISR": 8.523
+        },
+        "other": {
+          "SDR": 2.687,
+          "SIR": 4.94,
+          "SAR": 4.66,
+          "ISR": 12.725
+        }
+      }
+    },
+    {
+      "track": "Enda Reilly - Cur An Long Ag Seol",
+      "duration_sec": 187.0,
+      "sep_time_sec": 278.0,
+      "eval_time_sec": 250.6,
+      "scores": {
+        "vocals": {
+          "SDR": 11.85,
+          "SIR": 22.641,
+          "SAR": 12.267,
+          "ISR": 21.218
+        },
+        "drums": {
+          "SDR": 13.836,
+          "SIR": 31.84,
+          "SAR": 13.923,
+          "ISR": 23.508
+        },
+        "bass": {
+          "SDR": 11.055,
+          "SIR": 23.873,
+          "SAR": 11.761,
+          "ISR": 18.201
+        },
+        "other": {
+          "SDR": 9.442,
+          "SIR": 17.206,
+          "SAR": 9.946,
+          "ISR": 17.707
+        }
+      }
+    },
+    {
+      "track": "Forkupines - Semantics",
+      "duration_sec": 273.6,
+      "sep_time_sec": 375.3,
+      "eval_time_sec": 468.9,
+      "scores": {
+        "vocals": {
+          "SDR": 8.568,
+          "SIR": 19.468,
+          "SAR": 8.61,
+          "ISR": 15.823
+        },
+        "drums": {
+          "SDR": 12.645,
+          "SIR": 21.053,
+          "SAR": 14.203,
+          "ISR": 18.968
+        },
+        "bass": {
+          "SDR": 7.585,
+          "SIR": 16.237,
+          "SAR": 8.818,
+          "ISR": 11.922
+        },
+        "other": {
+          "SDR": 6.773,
+          "SIR": 11.268,
+          "SAR": 7.994,
+          "ISR": 12.758
+        }
+      }
+    },
+    {
+      "track": "Georgia Wonder - Siren",
+      "duration_sec": 430.4,
+      "sep_time_sec": 505.7,
+      "eval_time_sec": 1179.2,
+      "scores": {
+        "vocals": {
+          "SDR": 6.398,
+          "SIR": 13.884,
+          "SAR": 6.37,
+          "ISR": 12.657
+        },
+        "drums": {
+          "SDR": 11.656,
+          "SIR": 22.594,
+          "SAR": 12.621,
+          "ISR": 18.259
+        },
+        "bass": {
+          "SDR": 12.892,
+          "SIR": 24.478,
+          "SAR": 15.763,
+          "ISR": 16.33
+        },
+        "other": {
+          "SDR": 7.01,
+          "SIR": 12.347,
+          "SAR": 7.858,
+          "ISR": 13.419
+        }
+      }
+    },
+    {
+      "track": "Girls Under Glass - We Feel Alright",
+      "duration_sec": 317.3,
+      "sep_time_sec": 404.9,
+      "eval_time_sec": 554.5,
+      "scores": {
+        "vocals": {
+          "SDR": 6.572,
+          "SIR": 17.551,
+          "SAR": 6.521,
+          "ISR": 12.052
+        },
+        "drums": {
+          "SDR": 9.221,
+          "SIR": 21.049,
+          "SAR": 10.601,
+          "ISR": 13.708
+        },
+        "bass": {
+          "SDR": 5.805,
+          "SIR": 9.77,
+          "SAR": 7.337,
+          "ISR": 11.285
+        },
+        "other": {
+          "SDR": 6.667,
+          "SIR": 10.887,
+          "SAR": 8.371,
+          "ISR": 12.252
+        }
+      }
+    },
+    {
+      "track": "Hollow Ground - Ill Fate",
+      "duration_sec": 141.7,
+      "sep_time_sec": 234.4,
+      "eval_time_sec": 223.4,
+      "scores": {
+        "vocals": {
+          "SDR": 7.831,
+          "SIR": 14.967,
+          "SAR": 8.351,
+          "ISR": 14.585
+        },
+        "drums": {
+          "SDR": 6.743,
+          "SIR": 16.502,
+          "SAR": 6.943,
+          "ISR": 12.99
+        },
+        "bass": {
+          "SDR": 2.776,
+          "SIR": 4.937,
+          "SAR": 4.212,
+          "ISR": 9.197
+        },
+        "other": {
+          "SDR": 6.341,
+          "SIR": 11.948,
+          "SAR": 7.144,
+          "ISR": 10.203
+        }
+      }
+    },
+    {
+      "track": "James Elder & Mark M Thompson - The English Actor",
+      "duration_sec": 205.5,
+      "sep_time_sec": 292.6,
+      "eval_time_sec": 428.0,
+      "scores": {
+        "vocals": {
+          "SDR": 7.82,
+          "SIR": 19.734,
+          "SAR": 8.757,
+          "ISR": 12.115
+        },
+        "drums": {
+          "SDR": 10.508,
+          "SIR": 22.811,
+          "SAR": 11.126,
+          "ISR": 17.297
+        },
+        "bass": {
+          "SDR": 8.536,
+          "SIR": 15.959,
+          "SAR": 9.478,
+          "ISR": 15.261
+        },
+        "other": {
+          "SDR": 7.266,
+          "SIR": 11.16,
+          "SAR": 8.843,
+          "ISR": 15.962
+        }
+      }
+    },
+    {
+      "track": "Juliet's Rescue - Heartbeats",
+      "duration_sec": 267.7,
+      "sep_time_sec": 392.6,
+      "eval_time_sec": 492.7,
+      "scores": {
+        "vocals": {
+          "SDR": 10.133,
+          "SIR": 21.058,
+          "SAR": 10.48,
+          "ISR": 17.947
+        },
+        "drums": {
+          "SDR": 15.181,
+          "SIR": 27.101,
+          "SAR": 16.394,
+          "ISR": 21.738
+        },
+        "bass": {
+          "SDR": 3.03,
+          "SIR": 7.632,
+          "SAR": 3.177,
+          "ISR": 9.607
+        },
+        "other": {
+          "SDR": 6.803,
+          "SIR": 12.89,
+          "SAR": 7.564,
+          "ISR": 12.727
+        }
+      }
+    },
+    {
+      "track": "Little Chicago's Finest - My Own",
+      "duration_sec": 281.6,
+      "sep_time_sec": 385.1,
+      "eval_time_sec": 511.9,
+      "scores": {
+        "vocals": {
+          "SDR": 11.584,
+          "SIR": 22.448,
+          "SAR": 11.845,
+          "ISR": 21.487
+        },
+        "drums": {
+          "SDR": 1.687,
+          "SIR": 27.347,
+          "SAR": 8.645,
+          "ISR": 1.716
+        },
+        "bass": {
+          "SDR": 6.309,
+          "SIR": 21.244,
+          "SAR": 9.546,
+          "ISR": 7.068
+        },
+        "other": {
+          "SDR": 1.684,
+          "SIR": 0.679,
+          "SAR": 3.396,
+          "ISR": 2.383
+        }
+      }
+    },
+    {
+      "track": "Louis Cressy Band - Good Time",
+      "duration_sec": 292.8,
+      "sep_time_sec": 380.1,
+      "eval_time_sec": 473.8,
+      "scores": {
+        "vocals": {
+          "SDR": 10.129,
+          "SIR": 19.316,
+          "SAR": 10.375,
+          "ISR": 21.723
+        },
+        "drums": {
+          "SDR": 9.799,
+          "SIR": 21.839,
+          "SAR": 10.99,
+          "ISR": 14.649
+        },
+        "bass": {
+          "SDR": 10.055,
+          "SIR": 16.738,
+          "SAR": 11.567,
+          "ISR": 16.896
+        },
+        "other": {
+          "SDR": 9.716,
+          "SIR": 16.39,
+          "SAR": 10.905,
+          "ISR": 16.526
+        }
+      }
+    },
+    {
+      "track": "Lyndsey Ollard - Catching Up",
+      "duration_sec": 227.4,
+      "sep_time_sec": 323.7,
+      "eval_time_sec": 487.3,
+      "scores": {
+        "vocals": {
+          "SDR": 10.879,
+          "SIR": 27.659,
+          "SAR": 13.133,
+          "ISR": 14.157
+        },
+        "drums": {
+          "SDR": 9.053,
+          "SIR": 19.903,
+          "SAR": 9.305,
+          "ISR": 16.809
+        },
+        "bass": {
+          "SDR": 12.331,
+          "SIR": 23.93,
+          "SAR": 12.738,
+          "ISR": 24.025
+        },
+        "other": {
+          "SDR": 5.476,
+          "SIR": 8.821,
+          "SAR": 7.153,
+          "ISR": 16.129
+        }
+      }
+    },
+    {
+      "track": "M.E.R.C. Music - Knockout",
+      "duration_sec": 270.0,
+      "sep_time_sec": 386.0,
+      "eval_time_sec": 488.2,
+      "scores": {
+        "vocals": {
+          "SDR": 10.694,
+          "SIR": 18.93,
+          "SAR": 11.156,
+          "ISR": 20.415
+        },
+        "drums": {
+          "SDR": 11.262,
+          "SIR": 24.975,
+          "SAR": 11.885,
+          "ISR": 17.691
+        },
+        "bass": {
+          "SDR": 12.534,
+          "SIR": 20.826,
+          "SAR": 13.517,
+          "ISR": 24.824
+        },
+        "other": {
+          "SDR": 6.977,
+          "SIR": 15.528,
+          "SAR": 6.947,
+          "ISR": 13.411
+        }
+      }
+    },
+    {
+      "track": "Moosmusic - Big Dummy Shake",
+      "duration_sec": 198.9,
+      "sep_time_sec": 297.6,
+      "eval_time_sec": 434.2,
+      "scores": {
+        "vocals": {
+          "SDR": 11.611,
+          "SIR": 21.81,
+          "SAR": 12.046,
+          "ISR": 20.628
+        },
+        "drums": {
+          "SDR": 12.437,
+          "SIR": 25.019,
+          "SAR": 13.629,
+          "ISR": 18.012
+        },
+        "bass": {
+          "SDR": 9.302,
+          "SIR": 18.637,
+          "SAR": 9.895,
+          "ISR": 16.556
+        },
+        "other": {
+          "SDR": 7.547,
+          "SIR": 14.469,
+          "SAR": 8.207,
+          "ISR": 14.19
+        }
+      }
+    },
+    {
+      "track": "Motor Tapes - Shore",
+      "duration_sec": 246.7,
+      "sep_time_sec": 353.0,
+      "eval_time_sec": 456.7,
+      "scores": {
+        "vocals": {
+          "SDR": 9.641,
+          "SIR": 20.582,
+          "SAR": 10.467,
+          "ISR": 15.229
+        },
+        "drums": {
+          "SDR": 10.043,
+          "SIR": 20.38,
+          "SAR": 10.766,
+          "ISR": 16.566
+        },
+        "bass": {
+          "SDR": 12.216,
+          "SIR": 21.545,
+          "SAR": 12.877,
+          "ISR": 20.429
+        },
+        "other": {
+          "SDR": 11.214,
+          "SIR": 16.994,
+          "SAR": 12.469,
+          "ISR": 21.373
+        }
+      }
+    },
+    {
+      "track": "Mu - Too Bright",
+      "duration_sec": 272.2,
+      "sep_time_sec": 374.7,
+      "eval_time_sec": 489.1,
+      "scores": {
+        "vocals": {
+          "SDR": 10.573,
+          "SIR": 18.692,
+          "SAR": 11.175,
+          "ISR": 20.057
+        },
+        "drums": {
+          "SDR": 15.075,
+          "SIR": 29.009,
+          "SAR": 16.64,
+          "ISR": 20.319
+        },
+        "bass": {
+          "SDR": 6.399,
+          "SIR": 12.495,
+          "SAR": 7.405,
+          "ISR": 19.942
+        },
+        "other": {
+          "SDR": 7.248,
+          "SIR": 15.413,
+          "SAR": 7.557,
+          "ISR": 12.686
+        }
+      }
+    },
+    {
+      "track": "Nerve 9 - Pray For The Rain",
+      "duration_sec": 343.7,
+      "sep_time_sec": 411.4,
+      "eval_time_sec": 524.3,
+      "scores": {
+        "vocals": {
+          "SDR": 8.557,
+          "SIR": 20.2,
+          "SAR": 9.36,
+          "ISR": 13.578
+        },
+        "drums": {
+          "SDR": 13.264,
+          "SIR": 30.05,
+          "SAR": 14.424,
+          "ISR": 18.776
+        },
+        "bass": {
+          "SDR": 8.295,
+          "SIR": 17.645,
+          "SAR": 9.627,
+          "ISR": 13.269
+        },
+        "other": {
+          "SDR": 7.836,
+          "SIR": 12.061,
+          "SAR": 9.277,
+          "ISR": 17.712
+        }
+      }
+    },
+    {
+      "track": "PR - Happy Daze",
+      "duration_sec": 162.7,
+      "sep_time_sec": 288.1,
+      "eval_time_sec": 250.5,
+      "scores": {
+        "vocals": {
+          "SDR": -0.511,
+          "SIR": 3.869,
+          "SAR": -5.061,
+          "ISR": 2.507
+        },
+        "drums": {
+          "SDR": 15.312,
+          "SIR": 18.973,
+          "SAR": 18.011,
+          "ISR": 31.996
+        },
+        "bass": {
+          "SDR": 12.065,
+          "SIR": 25.037,
+          "SAR": 13.466,
+          "ISR": 16.915
+        },
+        "other": {
+          "SDR": 2.798,
+          "SIR": 17.094,
+          "SAR": -0.098,
+          "ISR": 5.193
+        }
+      }
+    },
+    {
+      "track": "PR - Oh No",
+      "duration_sec": 76.2,
+      "sep_time_sec": 195.4,
+      "eval_time_sec": 128.3,
+      "scores": {
+        "vocals": {
+          "SDR": 3.48,
+          "SIR": 21.857,
+          "SAR": 5.837,
+          "ISR": 4.227
+        },
+        "drums": {
+          "SDR": 7.581,
+          "SIR": 21.641,
+          "SAR": 13.997,
+          "ISR": 8.314
+        },
+        "bass": {
+          "SDR": 3.089,
+          "SIR": 18.81,
+          "SAR": 2.255,
+          "ISR": 5.339
+        },
+        "other": {
+          "SDR": 0.878,
+          "SIR": 1.756,
+          "SAR": 4.245,
+          "ISR": 7.777
+        }
+      }
+    },
+    {
+      "track": "Punkdisco - Oral Hygiene",
+      "duration_sec": 221.6,
+      "sep_time_sec": 307.6,
+      "eval_time_sec": 436.1,
+      "scores": {
+        "vocals": {
+          "SDR": 10.097,
+          "SIR": 20.812,
+          "SAR": 10.437,
+          "ISR": 18.942
+        },
+        "drums": {
+          "SDR": 5.56,
+          "SIR": 9.478,
+          "SAR": 7.929,
+          "ISR": 19.01
+        },
+        "bass": {
+          "SDR": 6.984,
+          "SIR": 22.244,
+          "SAR": 6.794,
+          "ISR": 11.222
+        },
+        "other": {
+          "SDR": 0.61,
+          "SIR": 1.316,
+          "SAR": 4.011,
+          "ISR": 7.564
+        }
+      }
+    },
+    {
+      "track": "Raft Monk - Tiring",
+      "duration_sec": 212.2,
+      "sep_time_sec": 323.8,
+      "eval_time_sec": 429.7,
+      "scores": {
+        "vocals": {
+          "SDR": 6.041,
+          "SIR": 12.468,
+          "SAR": 6.634,
+          "ISR": 10.915
+        },
+        "drums": {
+          "SDR": 9.115,
+          "SIR": 20.969,
+          "SAR": 9.39,
+          "ISR": 16.34
+        },
+        "bass": {
+          "SDR": 8.854,
+          "SIR": 14.475,
+          "SAR": 9.958,
+          "ISR": 18.8
+        },
+        "other": {
+          "SDR": 5.578,
+          "SIR": 9.881,
+          "SAR": 6.482,
+          "ISR": 9.998
+        }
+      }
+    },
+    {
+      "track": "Sambasevam Shanmugam - Kaathaadi",
+      "duration_sec": 317.9,
+      "sep_time_sec": 322.1,
+      "eval_time_sec": 261.3,
+      "scores": {
+        "vocals": {
+          "SDR": 13.997,
+          "SIR": 26.385,
+          "SAR": 14.336,
+          "ISR": 24.258
+        },
+        "drums": {
+          "SDR": 7.094,
+          "SIR": 27.391,
+          "SAR": 6.484,
+          "ISR": 13.038
+        },
+        "bass": {
+          "SDR": 10.696,
+          "SIR": 19.959,
+          "SAR": 12.404,
+          "ISR": 16.234
+        },
+        "other": {
+          "SDR": 9.632,
+          "SIR": 15.205,
+          "SAR": 10.745,
+          "ISR": 22.888
+        }
+      }
+    },
+    {
+      "track": "Secretariat - Borderline",
+      "duration_sec": 286.8,
+      "sep_time_sec": 308.1,
+      "eval_time_sec": 279.0,
+      "scores": {
+        "vocals": {
+          "SDR": 9.051,
+          "SIR": 19.841,
+          "SAR": 9.151,
+          "ISR": 17.293
+        },
+        "drums": {
+          "SDR": 7.603,
+          "SIR": 21.04,
+          "SAR": 7.863,
+          "ISR": 12.759
+        },
+        "bass": {
+          "SDR": 6.026,
+          "SIR": 16.466,
+          "SAR": 7.598,
+          "ISR": 8.753
+        },
+        "other": {
+          "SDR": 9.279,
+          "SIR": 13.794,
+          "SAR": 10.761,
+          "ISR": 17.719
+        }
+      }
+    },
+    {
+      "track": "Secretariat - Over The Top",
+      "duration_sec": 251.1,
+      "sep_time_sec": 266.1,
+      "eval_time_sec": 252.2,
+      "scores": {
+        "vocals": {
+          "SDR": 10.494,
+          "SIR": 23.004,
+          "SAR": 10.65,
+          "ISR": 19.405
+        },
+        "drums": {
+          "SDR": 9.449,
+          "SIR": 20.151,
+          "SAR": 10.045,
+          "ISR": 15.749
+        },
+        "bass": {
+          "SDR": 10.903,
+          "SIR": 25.52,
+          "SAR": 12.902,
+          "ISR": 14.409
+        },
+        "other": {
+          "SDR": 7.858,
+          "SIR": 12.687,
+          "SAR": 8.924,
+          "ISR": 17.209
+        }
+      }
+    },
+    {
+      "track": "Side Effects Project - Sing With Me",
+      "duration_sec": 243.7,
+      "sep_time_sec": 260.6,
+      "eval_time_sec": 246.7,
+      "scores": {
+        "vocals": {
+          "SDR": 13.15,
+          "SIR": 18.965,
+          "SAR": 14.703,
+          "ISR": 23.03
+        },
+        "drums": {
+          "SDR": 15.921,
+          "SIR": 25.995,
+          "SAR": 16.881,
+          "ISR": 24.299
+        },
+        "bass": {
+          "SDR": 14.51,
+          "SIR": 26.643,
+          "SAR": 15.315,
+          "ISR": 22.605
+        },
+        "other": {
+          "SDR": 3.432,
+          "SIR": 14.253,
+          "SAR": 3.276,
+          "ISR": 5.423
+        }
+      }
+    },
+    {
+      "track": "Signe Jakobsen - What Have You Done To Me",
+      "duration_sec": 177.4,
+      "sep_time_sec": 214.2,
+      "eval_time_sec": 149.7,
+      "scores": {
+        "vocals": {
+          "SDR": 11.326,
+          "SIR": 20.767,
+          "SAR": 11.922,
+          "ISR": 19.524
+        },
+        "drums": {
+          "SDR": 6.684,
+          "SIR": 17.312,
+          "SAR": 6.835,
+          "ISR": 11.816
+        },
+        "bass": {
+          "SDR": 3.443,
+          "SIR": 5.424,
+          "SAR": 6.686,
+          "ISR": 16.4
+        },
+        "other": {
+          "SDR": 6.05,
+          "SIR": 14.636,
+          "SAR": 7.334,
+          "ISR": 8.887
+        }
+      }
+    },
+    {
+      "track": "Skelpolu - Resurrection",
+      "duration_sec": 395.7,
+      "sep_time_sec": 374.1,
+      "eval_time_sec": 480.9,
+      "scores": {
+        "vocals": {
+          "SDR": 2.119,
+          "SIR": 9.413,
+          "SAR": -0.205,
+          "ISR": 4.09
+        },
+        "drums": {
+          "SDR": 13.943,
+          "SIR": 22.307,
+          "SAR": 15.16,
+          "ISR": 22.053
+        },
+        "bass": {
+          "SDR": 15.699,
+          "SIR": 24.68,
+          "SAR": 17.609,
+          "ISR": 21.856
+        },
+        "other": {
+          "SDR": 5.848,
+          "SIR": 9.002,
+          "SAR": 7.866,
+          "ISR": 12.756
+        }
+      }
+    },
+    {
+      "track": "Speak Softly - Broken Man",
+      "duration_sec": 253.2,
+      "sep_time_sec": 272.8,
+      "eval_time_sec": 250.5,
+      "scores": {
+        "vocals": {
+          "SDR": 6.974,
+          "SIR": 16.147,
+          "SAR": 7.959,
+          "ISR": 11.58
+        },
+        "drums": {
+          "SDR": 9.646,
+          "SIR": 28.815,
+          "SAR": 13.368,
+          "ISR": 11.52
+        },
+        "bass": {
+          "SDR": 18.531,
+          "SIR": 31.81,
+          "SAR": 19.495,
+          "ISR": 26.211
+        },
+        "other": {
+          "SDR": 9.272,
+          "SIR": 12.719,
+          "SAR": 11.526,
+          "ISR": 19.807
+        }
+      }
+    },
+    {
+      "track": "Speak Softly - Like Horses",
+      "duration_sec": 312.7,
+      "sep_time_sec": 311.2,
+      "eval_time_sec": 246.8,
+      "scores": {
+        "vocals": {
+          "SDR": 8.449,
+          "SIR": 16.205,
+          "SAR": 8.917,
+          "ISR": 13.962
+        },
+        "drums": {
+          "SDR": 8.426,
+          "SIR": 21.098,
+          "SAR": 9.417,
+          "ISR": 12.38
+        },
+        "bass": {
+          "SDR": 22.649,
+          "SIR": 39.606,
+          "SAR": 24.343,
+          "ISR": 27.959
+        },
+        "other": {
+          "SDR": 7.728,
+          "SIR": 11.958,
+          "SAR": 9.405,
+          "ISR": 17.098
+        }
+      }
+    },
+    {
+      "track": "The Doppler Shift - Atrophy",
+      "duration_sec": 331.4,
+      "sep_time_sec": 329.7,
+      "eval_time_sec": 271.7,
+      "scores": {
+        "vocals": {
+          "SDR": 9.604,
+          "SIR": 20.368,
+          "SAR": 10.347,
+          "ISR": 15.236
+        },
+        "drums": {
+          "SDR": 9.95,
+          "SIR": 18.75,
+          "SAR": 10.878,
+          "ISR": 16.75
+        },
+        "bass": {
+          "SDR": 2.901,
+          "SIR": 6.527,
+          "SAR": 4.279,
+          "ISR": 13.25
+        },
+        "other": {
+          "SDR": 6.579,
+          "SIR": 13.836,
+          "SAR": 8.244,
+          "ISR": 9.935
+        }
+      }
+    },
+    {
+      "track": "The Easton Ellises (Baumi) - SDRNR",
+      "duration_sec": 234.7,
+      "sep_time_sec": 255.2,
+      "eval_time_sec": 237.6,
+      "scores": {
+        "vocals": {
+          "SDR": 6.435,
+          "SIR": 12.881,
+          "SAR": 6.848,
+          "ISR": 12.513
+        },
+        "drums": {
+          "SDR": 11.096,
+          "SIR": 18.476,
+          "SAR": 12.554,
+          "ISR": 19.023
+        },
+        "bass": {
+          "SDR": 7.695,
+          "SIR": 17.785,
+          "SAR": 9.105,
+          "ISR": 11.49
+        },
+        "other": {
+          "SDR": 3.207,
+          "SIR": 6.564,
+          "SAR": 3.884,
+          "ISR": 8.267
+        }
+      }
+    },
+    {
+      "track": "The Easton Ellises - Falcon 69",
+      "duration_sec": 247.0,
+      "sep_time_sec": 263.7,
+      "eval_time_sec": 244.3,
+      "scores": {
+        "vocals": {
+          "SDR": 5.781,
+          "SIR": 14.635,
+          "SAR": 5.581,
+          "ISR": 10.185
+        },
+        "drums": {
+          "SDR": 10.451,
+          "SIR": 20.882,
+          "SAR": 11.031,
+          "ISR": 17.856
+        },
+        "bass": {
+          "SDR": 7.744,
+          "SIR": 16.334,
+          "SAR": 9.336,
+          "ISR": 12.272
+        },
+        "other": {
+          "SDR": 4.414,
+          "SIR": 7.49,
+          "SAR": 5.897,
+          "ISR": 11.419
+        }
+      }
+    },
+    {
+      "track": "The Long Wait - Dark Horses",
+      "duration_sec": 305.7,
+      "sep_time_sec": 313.1,
+      "eval_time_sec": 273.9,
+      "scores": {
+        "vocals": {
+          "SDR": 10.033,
+          "SIR": 20.074,
+          "SAR": 10.189,
+          "ISR": 18.96
+        },
+        "drums": {
+          "SDR": 9.337,
+          "SIR": 21.836,
+          "SAR": 9.506,
+          "ISR": 16.598
+        },
+        "bass": {
+          "SDR": 8.804,
+          "SIR": 20.035,
+          "SAR": 9.251,
+          "ISR": 15.063
+        },
+        "other": {
+          "SDR": 7.167,
+          "SIR": 13.805,
+          "SAR": 7.456,
+          "ISR": 15.563
+        }
+      }
+    },
+    {
+      "track": "The Mountaineering Club - Mallory",
+      "duration_sec": 244.5,
+      "sep_time_sec": 262.7,
+      "eval_time_sec": 236.9,
+      "scores": {
+        "vocals": {
+          "SDR": 12.381,
+          "SIR": 26.005,
+          "SAR": 12.687,
+          "ISR": 21.354
+        },
+        "drums": {
+          "SDR": 12.651,
+          "SIR": 27.466,
+          "SAR": 13.085,
+          "ISR": 19.796
+        },
+        "bass": {
+          "SDR": 11.987,
+          "SIR": 23.341,
+          "SAR": 12.916,
+          "ISR": 18.191
+        },
+        "other": {
+          "SDR": 8.253,
+          "SIR": 14.258,
+          "SAR": 9.289,
+          "ISR": 17.075
+        }
+      }
+    },
+    {
+      "track": "The Sunshine Garcia Band - For I Am The Moon",
+      "duration_sec": 320.3,
+      "sep_time_sec": 321.3,
+      "eval_time_sec": 285.1,
+      "scores": {
+        "vocals": {
+          "SDR": 10.686,
+          "SIR": 22.791,
+          "SAR": 10.87,
+          "ISR": 18.677
+        },
+        "drums": {
+          "SDR": 10.12,
+          "SIR": 19.755,
+          "SAR": 10.777,
+          "ISR": 17.309
+        },
+        "bass": {
+          "SDR": 9.48,
+          "SIR": 24.459,
+          "SAR": 9.993,
+          "ISR": 14.888
+        },
+        "other": {
+          "SDR": 2.897,
+          "SIR": 9.336,
+          "SAR": 2.96,
+          "ISR": 13.381
+        }
+      }
+    },
+    {
+      "track": "Timboz - Pony",
+      "duration_sec": 253.0,
+      "sep_time_sec": 271.8,
+      "eval_time_sec": 252.1,
+      "scores": {
+        "vocals": {
+          "SDR": 5.52,
+          "SIR": 13.462,
+          "SAR": 5.864,
+          "ISR": 9.231
+        },
+        "drums": {
+          "SDR": 5.252,
+          "SIR": 12.17,
+          "SAR": 5.447,
+          "ISR": 9.418
+        },
+        "bass": {
+          "SDR": 2.988,
+          "SIR": 7.747,
+          "SAR": 3.757,
+          "ISR": 8.252
+        },
+        "other": {
+          "SDR": 8.976,
+          "SIR": 13.31,
+          "SAR": 10.968,
+          "ISR": 15.091
+        }
+      }
+    },
+    {
+      "track": "Tom McKenzie - Directions",
+      "duration_sec": 175.9,
+      "sep_time_sec": 214.1,
+      "eval_time_sec": 142.7,
+      "scores": {
+        "vocals": {
+          "SDR": 11.644,
+          "SIR": 24.222,
+          "SAR": 12.887,
+          "ISR": 17.133
+        },
+        "drums": {
+          "SDR": 15.668,
+          "SIR": 30.305,
+          "SAR": 17.02,
+          "ISR": 21.084
+        },
+        "bass": {
+          "SDR": 5.483,
+          "SIR": 13.773,
+          "SAR": 5.287,
+          "ISR": 8.927
+        },
+        "other": {
+          "SDR": 3.454,
+          "SIR": 5.893,
+          "SAR": 4.967,
+          "ISR": 11.27
+        }
+      }
+    },
+    {
+      "track": "Triviul feat. The Fiend - Widow",
+      "duration_sec": 235.1,
+      "sep_time_sec": 254.1,
+      "eval_time_sec": 250.0,
+      "scores": {
+        "vocals": {
+          "SDR": 10.186,
+          "SIR": 15.386,
+          "SAR": 11.403,
+          "ISR": 21.322
+        },
+        "drums": {
+          "SDR": 8.478,
+          "SIR": 21.515,
+          "SAR": 9.192,
+          "ISR": 13.414
+        },
+        "bass": {
+          "SDR": 15.934,
+          "SIR": 40.082,
+          "SAR": 17.929,
+          "ISR": 19.983
+        },
+        "other": {
+          "SDR": 5.095,
+          "SIR": 12.851,
+          "SAR": 4.82,
+          "ISR": 10.068
+        }
+      }
+    },
+    {
+      "track": "We Fell From The Sky - Not You",
+      "duration_sec": 207.9,
+      "sep_time_sec": 235.8,
+      "eval_time_sec": 231.0,
+      "scores": {
+        "vocals": {
+          "SDR": 6.908,
+          "SIR": 18.956,
+          "SAR": 6.625,
+          "ISR": 12.703
+        },
+        "drums": {
+          "SDR": 12.015,
+          "SIR": 21.249,
+          "SAR": 13.467,
+          "ISR": 18.248
+        },
+        "bass": {
+          "SDR": 4.973,
+          "SIR": 10.44,
+          "SAR": 5.011,
+          "ISR": 12.449
+        },
+        "other": {
+          "SDR": 8.512,
+          "SIR": 15.485,
+          "SAR": 10.101,
+          "ISR": 13.261
+        }
+      }
+    },
+    {
+      "track": "Zeno - Signs",
+      "duration_sec": 234.4,
+      "sep_time_sec": 252.5,
+      "eval_time_sec": 230.9,
+      "scores": {
+        "vocals": {
+          "SDR": 9.089,
+          "SIR": 18.69,
+          "SAR": 9.49,
+          "ISR": 16.289
+        },
+        "drums": {
+          "SDR": 10.417,
+          "SIR": 20.836,
+          "SAR": 11.197,
+          "ISR": 17.098
+        },
+        "bass": {
+          "SDR": 3.901,
+          "SIR": 7.879,
+          "SAR": 4.465,
+          "ISR": 8.746
+        },
+        "other": {
+          "SDR": 7.165,
+          "SIR": 12.843,
+          "SAR": 8.042,
+          "ISR": 12.283
+        }
+      }
+    }
+  ],
+  "per_stem_median": {
+    "vocals": {
+      "SDR": 9.622,
+      "SIR": 19.7,
+      "SAR": 10.268
+    },
+    "drums": {
+      "SDR": 9.996,
+      "SIR": 21.075,
+      "SAR": 10.934
+    },
+    "bass": {
+      "SDR": 8.829,
+      "SIR": 18.2,
+      "SAR": 9.761
+    },
+    "other": {
+      "SDR": 6.797,
+      "SIR": 12.659,
+      "SAR": 7.559
+    }
+  },
+  "mean_sdr": 8.811
+}

@@ -141,6 +141,7 @@ def run_separation_benchmark(
     import soundfile as sf
 
     _, museval = _require_deps()
+    t_all0 = time.monotonic()
     from mujik.config.schema import SourceSeparationConfig
     from mujik.separate.router import separate_audio
 
@@ -200,18 +201,21 @@ def run_separation_benchmark(
         references = {
             name: track.targets[name].audio for name in SEPARATION_STEMS if name in track.targets
         }
+        t_eval0 = time.monotonic()
         scores = _evaluate_stems(references, estimates, museval)
+        eval_time = round(time.monotonic() - t_eval0, 1)
 
         results.append(
             {
                 "track": title,
                 "duration_sec": round(len(audio) / track.rate, 1),
                 "sep_time_sec": sep_time,
+                "eval_time_sec": eval_time,
                 "scores": scores,
             }
         )
         sdr = scores.get("vocals", {}).get("SDR", float("nan"))
-        print(f"[{idx + 1}/{len(tracks)}] {title}: vocals SDR={sdr} ({sep_time}s)")
+        print(f"[{idx + 1}/{len(tracks)}] {title}: vocals SDR={sdr} (sep {sep_time}s / eval {eval_time}s)")
         mix_path.unlink(missing_ok=True)
 
     # 聚合：per-stem 跨 track 的 SDR/SIR/SAR 中位数
@@ -240,6 +244,9 @@ def run_separation_benchmark(
         "device": device,
         "subset": subset,
         "n_tracks": len(results),
+        "total_elapsed_sec": round(time.monotonic() - t_all0, 1),
+        "total_sep_sec": round(sum(r["sep_time_sec"] for r in results), 1),
+        "total_eval_sec": round(sum(r["eval_time_sec"] for r in results), 1),
         "tracks": results,
         "per_stem_median": per_stem_median,
         "mean_sdr": mean_sdr,
@@ -254,6 +261,8 @@ def render_markdown(report: dict) -> str:
         f"- Variant: `{report['variant']}` (device={report['device']})",
         f"- Subset: {report['subset']} / {report['n_tracks']} tracks",
         f"- **Mean SDR (per-stem median): {report['mean_sdr']} dB**",
+        f"- Wall time: {report['total_elapsed_sec']}s "
+        f"(sep {report['total_sep_sec']}s + eval {report['total_eval_sec']}s)",
         "",
         "| Stem | SDR | SIR | SAR |",
         "|---|---|---|---|",
