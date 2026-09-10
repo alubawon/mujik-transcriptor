@@ -164,11 +164,20 @@ def run_separation_benchmark(
         mix_path = work / f"mix_{idx:03d}.wav"
         sf.write(mix_path, audio, track.rate)
 
-        sep_cfg = SourceSeparationConfig(
-            model="demucs",
-            variant=variant,
-            device=device,
-        )
+        # variant=bsroformer 走 BS-Roformer 后端（6-stem，含 guitar/piano）；
+        # 其余走 demucs。--variant 同时当"后端选择器"用，保持 CLI 单一旋钮。
+        if variant == "bsroformer":
+            sep_cfg = SourceSeparationConfig(
+                model="bsroformer",
+                stem_count=6,
+                device=device,
+            )
+        else:
+            sep_cfg = SourceSeparationConfig(
+                model="demucs",
+                variant=variant,
+                device=device,
+            )
         out_dir = work / f"sep_{idx:03d}"
         t0 = time.monotonic()
         stems = separate_audio(mix_path, out_dir, config=sep_cfg)
@@ -182,14 +191,18 @@ def run_separation_benchmark(
             est, _ = sf.read(stem.audio_path, dtype="float64")
             estimates[stem_name] = est
 
-        if variant == "htdemucs_6s":
-            # 口径对齐：htdemucs_6s 的 other 是"piano/guitar 之外的其余"，
+        if variant in ("htdemucs_6s", "bsroformer"):
+            # 口径对齐：6-stem 模型的 other 是"piano/guitar 之外的其余"，
             # 而 MUSDB GT 的 other **包含** piano+guitar——直接同名对比会把
             # piano/guitar 全记成 interference（SAR 崩到负数，SDR≈0）。
-            # MUSDB 无 piano/guitar 单独 GT，公平对比只能加回 other。
+            # MUSDB 无 piano/guitar 单独 GT，只能加回 other 才不崩。
+            # ⚠️ 但这**不使对比公平**：6-stem 被迫三路相加去跟 4-stem 一步
+            # 拟合的输出比（误差累积），且它唯一的差异化产出（分开的
+            # guitar/piano）在本协议里得分恒为 0——不是"测得差"，是"没计分"。
+            # 详见 docs/benchmarks/separation-musdb18hq-v0.5.3.md §2.1。
             if "other" not in estimates:
                 raise SeparationBenchmarkError(
-                    "htdemucs_6s output missing 'other' stem"
+                    f"{variant} output missing 'other' stem"
                 )
             for extra in ("piano", "guitar"):
                 stem = stems.get(extra)
@@ -303,7 +316,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--variant",
         default="htdemucs_ft",
-        help="demucs variant（htdemucs_ft / htdemucs / htdemucs_6s）",
+        help="分离后端/变体（htdemucs_ft / htdemucs / htdemucs_6s / bsroformer）",
     )
     parser.add_argument("--device", choices=["cpu", "cuda", "mps"], default="cpu")
     parser.add_argument("--limit", type=int, default=None, help="只跑前 N 轨")

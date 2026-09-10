@@ -1,13 +1,16 @@
-"""分离后端路由（v0.5.2）。
+"""分离后端路由（v0.5.2 / v0.5.3）。
 
 统一入口 `separate_audio()`：按 SourceSeparationConfig.model/variant 派发：
 
 - demucs + htdemucs_6s  → htdemucs_6s adapter（6-stem，含 piano/guitar）
 - demucs + 其余 variant → demucs 4-stem adapter
-- mdx23c / bsroformer / melbandroformer → **fail-loud**：
-  Roformer 家族尚未实现（未评估，见 docs/research.md），配置里写了
-  必须报错，绝不静默降级到 demucs（v0.5.2 前的 bug：jazz preset 的
-  mdx23c 被静默忽略，用户以为在用 Roformer 实际跑的是 demucs）。
+- bsroformer            → BS-Roformer SW adapter（6-stem，含 piano/guitar；
+                          v0.5.3 接入，subprocess 隔离，**权重许可未声明**，
+                          见 bsroformer_adapter docstring）
+- mdx23c / melbandroformer → **fail-loud**：
+  尚未实现（未评估，见 docs/research.md），配置里写了必须报错，
+  绝不静默降级到 demucs（v0.5.2 前的 bug：jazz preset 的 mdx23c 被静默
+  忽略，用户以为在用 Roformer 实际跑的是 demucs）。
 """
 
 from __future__ import annotations
@@ -20,9 +23,9 @@ from mujik.config.schema import SourceSeparationConfig
 from mujik.separate.model import Stems
 
 # 尚未实现的模型（schema 允许配置，但后端不存在）
+# v0.5.3: bsroformer 已实现并移出本列表
 ROFORMER_MODELS: tuple[str, ...] = (
     "mdx23c",
-    "bsroformer",
     "melbandroformer",
 )
 
@@ -56,11 +59,22 @@ def separate_audio(
 
     if cfg.model in ROFORMER_MODELS:
         raise SeparationBackendError(
-            f"separation model '{cfg.model}' 尚未实现（Roformer 家族未评估，"
+            f"separation model '{cfg.model}' 尚未实现（未评估，"
             f"见 docs/research.md）。当前可用：model=demucs "
-            f"(variant=htdemucs_ft 4-stem / htdemucs_6s 6-stem)。"
+            f"(variant=htdemucs_ft 4-stem / htdemucs_6s 6-stem)、"
+            f"model=bsroformer (6-stem 含 guitar/piano，权重许可未声明)。"
             f"请改配置，不要期待静默降级。"
         )
+
+    if cfg.model == "bsroformer":
+        from mujik.separate.bsroformer_adapter import separate_with_bsroformer
+
+        if cfg.stem_count != 6:
+            logger.warning(
+                "stem_count={} 与 bsroformer 的 6-stem 输出不匹配，以实际产出为准",
+                cfg.stem_count,
+            )
+        return separate_with_bsroformer(input_path, out_dir, config=cfg)
 
     if cfg.model != "demucs":  # pragma: no cover — schema Literal 兜底
         raise SeparationBackendError(f"unknown separation model: {cfg.model!r}")
