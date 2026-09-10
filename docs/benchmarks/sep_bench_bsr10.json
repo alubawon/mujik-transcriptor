@@ -1,0 +1,354 @@
+{
+  "variant": "bsroformer",
+  "device": "mps",
+  "subset": "test",
+  "n_tracks": 10,
+  "total_elapsed_sec": 6501.6,
+  "total_sep_sec": 3554.1,
+  "total_eval_sec": 2926.1,
+  "tracks": [
+    {
+      "track": "The Easton Ellises (Baumi) - SDRNR",
+      "duration_sec": 234.7,
+      "sep_time_sec": 281.1,
+      "eval_time_sec": 239.9,
+      "scores": {
+        "vocals": {
+          "SDR": 10.863,
+          "SIR": 20.641,
+          "SAR": 11.22,
+          "ISR": 19.695
+        },
+        "drums": {
+          "SDR": 13.114,
+          "SIR": 20.906,
+          "SAR": 14.22,
+          "ISR": 23.273
+        },
+        "bass": {
+          "SDR": 10.497,
+          "SIR": 19.323,
+          "SAR": 11.52,
+          "ISR": 17.217
+        },
+        "other": {
+          "SDR": 7.454,
+          "SIR": 17.46,
+          "SAR": 7.816,
+          "ISR": 12.338
+        }
+      }
+    },
+    {
+      "track": "Bobby Nobody - Stitch Up",
+      "duration_sec": 221.2,
+      "sep_time_sec": 309.1,
+      "eval_time_sec": 250.0,
+      "scores": {
+        "vocals": {
+          "SDR": 13.619,
+          "SIR": 27.301,
+          "SAR": 13.738,
+          "ISR": 25.179
+        },
+        "drums": {
+          "SDR": 10.467,
+          "SIR": 22.371,
+          "SAR": 10.66,
+          "ISR": 18.721
+        },
+        "bass": {
+          "SDR": 12.734,
+          "SIR": 24.207,
+          "SAR": 13.133,
+          "ISR": 21.517
+        },
+        "other": {
+          "SDR": 10.245,
+          "SIR": 19.445,
+          "SAR": 10.496,
+          "ISR": 19.226
+        }
+      }
+    },
+    {
+      "track": "Al James - Schoolboy Facination",
+      "duration_sec": 200.5,
+      "sep_time_sec": 280.1,
+      "eval_time_sec": 237.0,
+      "scores": {
+        "vocals": {
+          "SDR": 11.808,
+          "SIR": 19.998,
+          "SAR": 12.37,
+          "ISR": 22.121
+        },
+        "drums": {
+          "SDR": 9.547,
+          "SIR": 18.998,
+          "SAR": 10.027,
+          "ISR": 17.402
+        },
+        "bass": {
+          "SDR": 13.186,
+          "SIR": 22.622,
+          "SAR": 13.831,
+          "ISR": 22.492
+        },
+        "other": {
+          "SDR": 7.323,
+          "SIR": 16.801,
+          "SAR": 7.572,
+          "ISR": 12.284
+        }
+      }
+    },
+    {
+      "track": "James Elder & Mark M Thompson - The English Actor",
+      "duration_sec": 205.5,
+      "sep_time_sec": 281.1,
+      "eval_time_sec": 253.0,
+      "scores": {
+        "vocals": {
+          "SDR": 11.15,
+          "SIR": 24.199,
+          "SAR": 11.602,
+          "ISR": 18.232
+        },
+        "drums": {
+          "SDR": 12.782,
+          "SIR": 27.079,
+          "SAR": 13.294,
+          "ISR": 20.552
+        },
+        "bass": {
+          "SDR": 10.178,
+          "SIR": 20.061,
+          "SAR": 11.425,
+          "ISR": 15.54
+        },
+        "other": {
+          "SDR": 10.053,
+          "SIR": 16.408,
+          "SAR": 10.906,
+          "ISR": 20.161
+        }
+      }
+    },
+    {
+      "track": "Girls Under Glass - We Feel Alright",
+      "duration_sec": 317.3,
+      "sep_time_sec": 426.4,
+      "eval_time_sec": 291.3,
+      "scores": {
+        "vocals": {
+          "SDR": 7.684,
+          "SIR": 20.373,
+          "SAR": 7.677,
+          "ISR": 13.725
+        },
+        "drums": {
+          "SDR": 13.48,
+          "SIR": 25.105,
+          "SAR": 14.003,
+          "ISR": 21.917
+        },
+        "bass": {
+          "SDR": 5.242,
+          "SIR": 16.003,
+          "SAR": 4.595,
+          "ISR": 8.834
+        },
+        "other": {
+          "SDR": 5.208,
+          "SIR": 8.727,
+          "SAR": 6.929,
+          "ISR": 16.346
+        }
+      }
+    },
+    {
+      "track": "Georgia Wonder - Siren",
+      "duration_sec": 430.4,
+      "sep_time_sec": 592.5,
+      "eval_time_sec": 593.6,
+      "scores": {
+        "vocals": {
+          "SDR": 8.744,
+          "SIR": 19.003,
+          "SAR": 8.732,
+          "ISR": 16.876
+        },
+        "drums": {
+          "SDR": 14.402,
+          "SIR": 26.342,
+          "SAR": 14.948,
+          "ISR": 22.849
+        },
+        "bass": {
+          "SDR": 15.768,
+          "SIR": 25.577,
+          "SAR": 16.763,
+          "ISR": 23.993
+        },
+        "other": {
+          "SDR": 9.663,
+          "SIR": 17.825,
+          "SAR": 10.025,
+          "ISR": 18.347
+        }
+      }
+    },
+    {
+      "track": "Buitraker - Revo X",
+      "duration_sec": 275.8,
+      "sep_time_sec": 379.9,
+      "eval_time_sec": 291.7,
+      "scores": {
+        "vocals": {
+          "SDR": 9.21,
+          "SIR": 20.022,
+          "SAR": 9.583,
+          "ISR": 15.926
+        },
+        "drums": {
+          "SDR": 16.66,
+          "SIR": 30.662,
+          "SAR": 17.775,
+          "ISR": 23.449
+        },
+        "bass": {
+          "SDR": 12.33,
+          "SIR": 18.743,
+          "SAR": 13.499,
+          "ISR": 23.203
+        },
+        "other": {
+          "SDR": 9.535,
+          "SIR": 17.442,
+          "SAR": 10.411,
+          "ISR": 15.786
+        }
+      }
+    },
+    {
+      "track": "Ben Carrigan - We'll Talk About It All Tonight",
+      "duration_sec": 254.9,
+      "sep_time_sec": 372.6,
+      "eval_time_sec": 272.4,
+      "scores": {
+        "vocals": {
+          "SDR": 9.927,
+          "SIR": 22.025,
+          "SAR": 10.07,
+          "ISR": 17.896
+        },
+        "drums": {
+          "SDR": 12.044,
+          "SIR": 23.49,
+          "SAR": 12.407,
+          "ISR": 20.908
+        },
+        "bass": {
+          "SDR": 13.95,
+          "SIR": 26.129,
+          "SAR": 14.336,
+          "ISR": 23.978
+        },
+        "other": {
+          "SDR": 9.796,
+          "SIR": 18.795,
+          "SAR": 10.128,
+          "ISR": 17.821
+        }
+      }
+    },
+    {
+      "track": "Side Effects Project - Sing With Me",
+      "duration_sec": 243.7,
+      "sep_time_sec": 332.6,
+      "eval_time_sec": 255.2,
+      "scores": {
+        "vocals": {
+          "SDR": 17.742,
+          "SIR": 27.378,
+          "SAR": 18.315,
+          "ISR": 31.12
+        },
+        "drums": {
+          "SDR": 17.026,
+          "SIR": 21.014,
+          "SAR": 19.36,
+          "ISR": 33.713
+        },
+        "bass": {
+          "SDR": 16.299,
+          "SIR": 30.174,
+          "SAR": 16.776,
+          "ISR": 26.242
+        },
+        "other": {
+          "SDR": 4.848,
+          "SIR": 24.755,
+          "SAR": 7.333,
+          "ISR": 6.397
+        }
+      }
+    },
+    {
+      "track": "BKS - Too Much",
+      "duration_sec": 220.1,
+      "sep_time_sec": 298.7,
+      "eval_time_sec": 242.0,
+      "scores": {
+        "vocals": {
+          "SDR": 15.072,
+          "SIR": 29.603,
+          "SAR": 15.271,
+          "ISR": 26.573
+        },
+        "drums": {
+          "SDR": 12.881,
+          "SIR": 24.055,
+          "SAR": 13.272,
+          "ISR": 22.603
+        },
+        "bass": {
+          "SDR": 15.744,
+          "SIR": 26.169,
+          "SAR": 16.442,
+          "ISR": 25.52
+        },
+        "other": {
+          "SDR": 9.659,
+          "SIR": 20.084,
+          "SAR": 10.001,
+          "ISR": 16.918
+        }
+      }
+    }
+  ],
+  "per_stem_median": {
+    "vocals": {
+      "SDR": 11.006,
+      "SIR": 21.333,
+      "SAR": 11.411
+    },
+    "drums": {
+      "SDR": 12.998,
+      "SIR": 23.773,
+      "SAR": 13.649
+    },
+    "bass": {
+      "SDR": 12.96,
+      "SIR": 23.415,
+      "SAR": 13.665
+    },
+    "other": {
+      "SDR": 9.597,
+      "SIR": 17.642,
+      "SAR": 10.013
+    }
+  },
+  "mean_sdr": 11.64
+}
